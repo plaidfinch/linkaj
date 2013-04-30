@@ -65,9 +65,7 @@
                        (assoc (dissoc active (get mirror v)) k v)
                        (assoc (dissoc mirror (get active k)) v k)))
     (without [this k]
-             (Bijection. metadata
-                         (dissoc active k)
-                         (dissoc mirror (get active k))))
+             (disj this [k (get active k)]))
   clojure.lang.Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -146,9 +144,7 @@
     (assoc [this k v]
            (conj this [k v]))
     (without [this k]
-             (Surjection. metadata
-                          (dissoc active k)
-                          (dissoc mirror (get active k))))
+             (disj this [k (get active k)]))
   clojure.lang.Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
