@@ -14,7 +14,7 @@
   clojure.lang.IPersistentMap
   clojure.lang.IPersistentSet)
 
-(declare inverted-surjection)
+(declare inverted-surjection-)
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
@@ -141,12 +141,14 @@
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
 (deftype Surjection [metadata active mirror]
   Invertible
-    (inverse [this] (inverted-surjection metadata mirror active))
+    (inverse [this] (inverted-surjection- metadata mirror active))
   clojure.lang.IPersistentMap
     (assoc [this k v]
            (conj this [k v]))
     (without [this k]
-             (disj this k (get this k)))
+             (Surjection. metadata
+                          (dissoc active k)
+                          (dissoc mirror (get active k))))
   clojure.lang.Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -188,7 +190,7 @@
     (assoc [this k v]
            (conj this [k v]))
     (without [this k]
-             (disj this k (get this k)))
+             (reduce disj this (map (partial vector k) (get active k))))
   clojure.lang.Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -214,8 +216,8 @@
              (if (not (and (contains? active k) (contains? mirror v)))
                  this
                  (InvertedSurjection. metadata
-                                      (disj active [v k])
-                                      (dissoc mirror k))))
+                                      (disj active [k v])
+                                      (dissoc mirror v))))
   clojure.lang.IFn
     (invoke [this k] (get active k))
   clojure.lang.IObj
@@ -225,29 +227,29 @@
 
 ; Factory function for SetMaps.
 (defn set-map
-  ([] (SetMap. nil {}))
+  ([] (SetMap. nil (hash-map)))
   ([& keyvals]
    (apply assoc (set-map) keyvals)))
 
 ; Factory functions for the core datatypes in this file:
 
 (defn bijection
-  ([] (Bijection. nil {} {}))
+  ([] (Bijection. nil (hash-map) (hash-map)))
   ([& keyvals]
    (apply assoc (bijection) keyvals)))
 
 (defn surjection
-  ([] (Surjection. nil {} (set-map)))
+  ([] (Surjection. nil (hash-map) (set-map)))
   ([& keyvals]
    (apply assoc (surjection) keyvals)))
 
 (defn bipartite
   ([] (Bipartite. nil (set-map) (set-map)))
   ([& keyvals]
-   (reduce conj (bipartite) (partition 2 keyvals))))
+   (apply assoc (bipartite) keyvals)))
 
 ; Private factory function for InvertedSurjection. Required because of limitations on coroutined type definitions.
-(defn- inverted-surjection
+(defn- inverted-surjection-
   ([metadata mirror active] (InvertedSurjection. metadata mirror active)))
 
 ; Like dissoc, but does it backward. Works with things implementing the Invertible protocol.
