@@ -23,11 +23,6 @@
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
 
-(defprotocol Attributed
-  "Protocol for an 'attribute map' which, unlike vanilla maps, associates a key with one or more attribute-value pairs."
-  (attr-get [m a-map])
-  (attr-find [m a-map]))
-
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
   print-method
@@ -59,7 +54,7 @@
                               (assoc contents k (disj (get contents k) v))
                               (dissoc contents k)))
                  this))
-  IObj  (withMeta [this new-meta] (SetMap. new-meta contents))
+  IObj (withMeta [this new-meta] (SetMap. new-meta contents))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
     (containsKey [this k] (contains? contents k))
@@ -207,8 +202,8 @@
   IPersistentSet
     (disjoin [this [k v]]
              (if (and (contains? active k) (contains? mirror v))
-                 (InvertedSurjection. metadata (disj active [k v]) (dissoc mirror v)))
-             this)
+                 (InvertedSurjection. metadata (disj active [k v]) (dissoc mirror v))
+                 this))
   IObj (withMeta [this new-meta] (InvertedSurjection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
