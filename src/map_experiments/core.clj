@@ -11,6 +11,14 @@
               MapEquivalence
               Seqable]))
 
+; http://clojuredocs.org/clojure_contrib/clojure.contrib.types/deftype-
+(defmacro deftype-
+  "Same as deftype but the constructor is private."
+  [type-tag constructor-name & optional]
+  `(deftype ~type-tag
+     ~(vary-meta constructor-name assoc :private true)
+     ~@optional))
+
 (defprotocol Invertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
@@ -20,15 +28,17 @@
   (attr-get [m a-map])
   (attr-find [m a-map]))
 
+; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
   print-method
   IPersistentMap
   IPersistentSet)
 
-(declare inverted-surjection-)
+; Forward declaration of coroutined constructors for surjection types.
+(declare inverted-surjection- surjection-)
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
-(deftype SetMap [metadata contents]
+(deftype- SetMap [metadata contents]
   IPersistentMap
     (assoc [this k v]
            (SetMap. metadata
@@ -63,7 +73,7 @@
   IMeta (meta [this] metadata))
 
 ; Invertible map that preserves a bijective property amongst its elements.
-(deftype Bijection [metadata
+(deftype- Bijection [metadata
                     ^IPersistentMap active
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
@@ -98,7 +108,7 @@
   IMeta (meta [this] metadata))
 
 ; Dual (invertible) SetMap with no restrictions on associations.
-(deftype Bipartite [metadata
+(deftype- Bipartite [metadata
                     ^SetMap active
                     ^SetMap mirror]
   Invertible (inverse [this] (Bipartite. metadata mirror active))
@@ -137,7 +147,7 @@
   IMeta (meta [this] metadata))
 
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
-(deftype Surjection [metadata
+(deftype- Surjection [metadata
                      ^IPersistentMap active
                      ^SetMap mirror]
   Invertible (inverse [this] (inverted-surjection- metadata mirror active))
@@ -176,10 +186,10 @@
   IMeta (meta [this] metadata))
 
 ; Dual of Surjection. Behaves like a SetMap, except it preserves the surjective property of the original map. Yields a Surjection when inverted.
-(deftype InvertedSurjection [metadata
+(deftype- InvertedSurjection [metadata
                              ^SetMap active
                              ^IPersistentMap mirror]
-  Invertible (inverse [this] (Surjection. metadata mirror active))
+  Invertible (inverse [this] (surjection- metadata mirror active))
   IPersistentMap
     (assoc [this k v]
            (conj this [k v]))
@@ -215,6 +225,12 @@
   IObj (withMeta [this new-meta] (InvertedSurjection. new-meta active mirror))
   IMeta (meta [this] metadata))
 
+; Private factory functions for InvertedSurjection and Surjection. Required because of limitations on coroutined type definitions.
+(defn- inverted-surjection-
+  ([metadata active mirror] (InvertedSurjection. metadata active mirror)))
+(defn- surjection-
+  ([metadata active mirror] (Surjection. metadata active mirror)))
+
 ; Factory functions for the core datatypes in this file:
 
 (defn set-map
@@ -237,21 +253,10 @@
   ([& keyvals]
    (apply assoc (bipartite) keyvals)))
 
-; Private factory function for InvertedSurjection. Required because of limitations on coroutined type definitions.
-(defn- inverted-surjection-
-  ([metadata mirror active] (InvertedSurjection. metadata mirror active)))
-
 ; Like dissoc, but does it backward. Works with things implementing the Invertible protocol.
 (defn rdissoc
   ([coll & ks]
-   (inverse (reduce dissoc (inverse coll) ks))))
-
-; Like assoc, but does it backward. Works with Invertible things.
-(defn rassoc
-  ([coll & keyvals]
-   (inverse (reduce (partial apply assoc)
-                    (inverse coll)
-                    (partition 2 keyvals)))))
+   (inverse (apply dissoc (inverse coll) ks))))
 
 ; (defn sorted-bijection-by
 ;   ([comp-both]
