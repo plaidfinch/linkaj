@@ -40,25 +40,17 @@
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
   IPersistentMap
-    (assoc [this k v]
-           (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
-    (without [this k]
-             (SetMap. metadata (dissoc contents k)))
-  Associative
-    (containsKey [this k] (contains? contents k))
-    (entryAt     [this k] (find contents k))
+    (assoc   [this k v] (conj this [k v]))
+    (without [this k]   (SetMap. metadata (dissoc contents k)))
   IPersistentCollection
-    (count [this] (count contents))
-    (cons [this [k v]] (assoc this k v))
+    (cons [this [k v]]
+          (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
+    (equiv [this o]
+           (or (and (isa? (class o) SetMap)
+                    (= contents (.contents ^SetMap o)))
+               (= contents o)))
     (empty [this] (SetMap. metadata (empty contents)))
-    (equiv [this o] (or (and (isa? (class o) SetMap)
-                             (= contents (.contents ^SetMap o)))
-                        (= contents o)))
-  Seqable (seq [this] (seq contents))
-  ILookup
-    (valAt [this k]           (get contents k))
-    (valAt [this k not-found] (get contents k not-found))
-  MapEquivalence
+    (count [this] (count contents))
   IPersistentSet
     (disjoin [this [k v]]
              (if (contains? contents k)
@@ -67,9 +59,18 @@
                               (assoc contents k (disj (get contents k) v))
                               (dissoc contents k)))
                  this))
-  IFn   (invoke [this k] (get contents k))
   IObj  (withMeta [this new-meta] (SetMap. new-meta contents))
-  IMeta (meta [this] metadata))
+  ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
+  Associative
+    (containsKey [this k] (contains? contents k))
+    (entryAt     [this k] (find contents k))
+  ILookup
+    (valAt [this k]           (get contents k))
+    (valAt [this k not-found] (get contents k not-found))
+  Seqable (seq    [this]   (seq contents))
+  IFn     (invoke [this k] (get contents k))
+  IMeta   (meta   [this]   metadata)
+  MapEquivalence)
 
 ; Invertible map that preserves a bijective property amongst its elements.
 (deftype- Bijection [metadata
@@ -77,13 +78,13 @@
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
   IPersistentMap
-    (assoc [this k v]
-           (Bijection. metadata
-                       (assoc (dissoc active (get mirror v)) k v)
-                       (assoc (dissoc mirror (get active k)) v k)))
+    (assoc [this k v] (conj this [k v]))
     (without [this k] (disj this [k (get active k)]))
   IPersistentCollection
-    (cons  [this [k v]] (assoc this k v))
+    (cons [this [k v]]
+          (Bijection. metadata
+                      (assoc (dissoc active (get mirror v)) k v)
+                      (assoc (dissoc mirror (get active k)) v k)))
     (equiv [this o] 
            (or (and (isa? (class o) Bijection)
                     (= active (.active ^Bijection o)))
@@ -96,7 +97,7 @@
                  (Bijection. metadata (dissoc active k) (dissoc mirror v))
                  this))
   IObj (withMeta [this new-meta] (Bijection. new-meta active mirror))
-  ; Everything below here is the same for all mirrored maps.
+  ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -131,7 +132,7 @@
                  (Bipartite. metadata (disj active [k v]) (disj mirror [v k]))
                  this))
   IObj (withMeta [this new-meta] (Bipartite. new-meta active mirror))
-  ; Everything below here is the same for all mirrored maps.
+  ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -168,7 +169,7 @@
                  (Surjection. metadata (dissoc active k) (disj mirror [v k]))
                  this))
   IObj (withMeta [this new-meta] (Surjection. new-meta active mirror))
-  ; Everything below here is the same for all mirrored maps.
+  ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
@@ -205,7 +206,7 @@
                  (InvertedSurjection. metadata (disj active [k v]) (dissoc mirror v)))
              this)
   IObj (withMeta [this new-meta] (InvertedSurjection. new-meta active mirror))
-  ; Everything below here is the same for all mirrored maps.
+  ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
     (containsKey [this k] (contains? active k))
     (entryAt     [this k] (find active k))
