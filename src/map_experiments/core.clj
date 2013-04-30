@@ -67,9 +67,10 @@
   ILookup
     (valAt [this k]           (get contents k))
     (valAt [this k not-found] (get contents k not-found))
-  Seqable (seq    [this]   (seq contents))
-  IFn     (invoke [this k] (get contents k))
-  IMeta   (meta   [this]   metadata)
+  Seqable (seq      [this]   (seq contents))
+  IFn     (invoke   [this k] (get contents k))
+  IMeta   (meta     [this]   metadata)
+  Object  (toString [this]   (str contents))
   MapEquivalence)
 
 ; Invertible map that preserves a bijective property amongst its elements.
@@ -104,9 +105,10 @@
   ILookup
     (valAt [this k]           (get active k))
     (valAt [this k not-found] (get active k not-found))
-  Seqable (seq    [this]   (seq active))
-  IFn     (invoke [this k] (get active k))
-  IMeta   (meta   [this]   metadata)
+  Seqable (seq      [this]   (seq active))
+  IFn     (invoke   [this k] (get active k))
+  IMeta   (meta     [this]   metadata)
+  Object  (toString [this]   (str active))
   MapEquivalence)
 
 ; Dual (invertible) SetMap with no restrictions on associations; that is to say, a bipartite graph.
@@ -139,9 +141,10 @@
   ILookup
     (valAt [this k]           (get active k))
     (valAt [this k not-found] (get active k not-found))
-  Seqable (seq    [this]   (seq active))
-  IFn     (invoke [this k] (get active k))
-  IMeta   (meta   [this]   metadata)
+  Seqable (seq      [this]   (seq active))
+  IFn     (invoke   [this k] (get active k))
+  IMeta   (meta     [this]   metadata)
+  Object  (toString [this]   (str active))
   MapEquivalence)
 
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
@@ -176,9 +179,10 @@
   ILookup
     (valAt [this k]           (get active k))
     (valAt [this k not-found] (get active k not-found))
-  Seqable (seq    [this]   (seq active))
-  IFn     (invoke [this k] (get active k))
-  IMeta   (meta   [this]   metadata)
+  Seqable (seq      [this]   (seq active))
+  IFn     (invoke   [this k] (get active k))
+  IMeta   (meta     [this]   metadata)
+  Object  (toString [this]   (str active))
   MapEquivalence)
 
 ; Dual of Surjection. Behaves like a SetMap, except it preserves the surjective property of the original map. Yields a Surjection when inverted.
@@ -213,9 +217,10 @@
   ILookup
     (valAt [this k]           (get active k))
     (valAt [this k not-found] (get active k not-found))
-  Seqable (seq    [this]   (seq active))
-  IFn     (invoke [this k] (get active k))
-  IMeta   (meta   [this]   metadata)
+  Seqable (seq      [this]   (seq active))
+  IFn     (invoke   [this k] (get active k))
+  IMeta   (meta     [this]   metadata)
+  Object  (toString [this]   (str active))
   MapEquivalence)
 
 ; Private factory functions for InvertedSurjection and Surjection. Required because of limitations on coroutined type definitions.
