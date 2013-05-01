@@ -231,29 +231,33 @@
 ; Factory functions for the core datatypes in this file:
 
 (defn set-map
+  "Creates a SetMap, which is a smart map that overrides assoc so that every value is a set of all values which have been associated with it; that is, assoc is non-overwriting."
   ([] (SetMap. nil (hash-map)))
   ([& keyvals]
    (apply assoc (set-map) keyvals)))
 
 (defn bijection
+  "Creates a Bijection, which is an invertible map that preserves a bijective (1-to-1) mapping. That is, both keys and values are guaranteed to be unique; assoc overwrites any extant keys or values, also removing their associated pairings."
   ([] (Bijection. nil (hash-map) (hash-map)))
   ([& keyvals]
    (apply assoc (bijection) keyvals)))
 
 (defn surjection
+  "Creates a Surjection, which is an invertible map which functions as a drop-in replacement for the standard map. Inverts into an InvertedSurjection, which behaves like a SetMap that is constrained to preserving the surjective property of the original map -- and which may be inverted back into a Surjection."
   ([] (Surjection. nil (hash-map) (set-map)))
   ([& keyvals]
    (apply assoc (surjection) keyvals)))
 
 (defn bipartite
+  "Creates a Bipartite, which is an invertible map which maintains a mapping from keys to sets of values, and values to sets of keys -- that is, essentially an invertible SetMap. So named because it is a bipartite graph in semantic structure."
   ([] (Bipartite. nil (set-map) (set-map)))
   ([& keyvals]
    (apply assoc (bipartite) keyvals)))
 
-; Like dissoc, but does it backward. Works with things implementing the Invertible protocol.
 (defn rdissoc
-  ([coll & ks]
-   (inverse (apply dissoc (inverse coll) ks))))
+  "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
+  ([coll & vs]
+   (inverse (apply dissoc (inverse coll) vs))))
 
 ; (defn sorted-bijection-by
 ;   ([comp-both]
