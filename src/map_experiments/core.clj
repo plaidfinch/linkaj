@@ -35,11 +35,12 @@
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
   IPersistentMap
-    (assoc   [this k v] (conj this [k v]))
-    (without [this k]   (SetMap. metadata (dissoc contents k)))
+    (assoc [this k v]
+           (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
+    (without [this k]
+             (SetMap. metadata (dissoc contents k)))
   IPersistentCollection
-    (cons [this [k v]]
-          (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
+    (cons [this [k v]] (assoc this k v))
     (equiv [this o]
            (or (and (isa? (class o) SetMap)
                     (= contents (.contents ^SetMap o)))
@@ -48,12 +49,12 @@
     (count [this] (count contents))
   IPersistentSet
     (disjoin [this [k v]]
-             (if (contains? contents k)
-                 (SetMap. metadata
-                          (if (< 1 (count (get contents k)))
-                              (assoc contents k (disj (get contents k) v))
-                              (dissoc contents k)))
-                 this))
+             (if-let [old-v-set (get contents k)]
+                     (SetMap. metadata
+                              (if (< 1 (count old-v-set))
+                                  (assoc contents k (disj old-v-set v))
+                                  (dissoc contents k)))
+                     this))
   IObj (withMeta [this new-meta] (SetMap. new-meta contents))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -74,13 +75,13 @@
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
   IPersistentMap
-    (assoc [this k v] (conj this [k v]))
+    (assoc [this k v]
+           (Bijection. metadata
+                       (assoc (dissoc active (get mirror v)) k v)
+                       (assoc (dissoc mirror (get active k)) v k)))
     (without [this k] (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this [k v]]
-          (Bijection. metadata
-                      (assoc (dissoc active (get mirror v)) k v)
-                      (assoc (dissoc mirror (get active k)) v k)))
+    (cons [this [k v]] (assoc this k v))
     (equiv [this o] 
            (or (and (isa? (class o) Bijection)
                     (= active (.active ^Bijection o)))
@@ -112,11 +113,12 @@
                     ^SetMap mirror]
   Invertible (inverse [this] (Bipartite. metadata mirror active))
   IPersistentMap
-    (assoc   [this k v] (conj this [k v]))
-    (without [this k]   (reduce disj this (map (partial vector k) (get active k))))
+    (assoc [this k v]
+           (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
+    (without [this k]
+             (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this [k v]]
-          (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
+    (cons [this [k v]] (assoc this k v))
     (equiv [this o]
            (or (and (isa? (class o) Bipartite)
                     (= active (.active ^Bipartite o)))
@@ -148,13 +150,14 @@
                      ^SetMap mirror]
   Invertible (inverse [this] (inverted-surjection- metadata mirror active))
   IPersistentMap
-    (assoc   [this k v] (conj this [k v]))
-    (without [this k]   (disj this [k (get active k)]))
+    (assoc [this k v]
+           (Surjection. metadata
+                        (assoc active k v)
+                        (assoc (disj mirror [(get active k) k]) v k)))
+    (without [this k] 
+             (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this [k v]]
-          (Surjection. metadata
-                       (assoc active k v)
-                       (assoc (disj mirror [(get active k) k]) v k)))
+    (cons [this [k v]] (assoc this k v))
     (equiv [this o]
            (or (and (isa? (class o) Surjection)
                     (= active (.active ^Surjection o)))
@@ -186,13 +189,14 @@
                              ^IPersistentMap mirror]
   Invertible (inverse [this] (surjection- metadata mirror active))
   IPersistentMap
-    (assoc   [this k v] (conj this [k v]))
-    (without [this k]   (reduce disj this (map (partial vector k) (get active k))))
+    (assoc [this k v]
+           (InvertedSurjection. metadata
+                                (assoc (disj active [(get mirror v) v]) k v)
+                                (assoc mirror v k)))
+    (without [this k] 
+             (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this [k v]]
-          (InvertedSurjection. metadata
-                               (assoc (disj active [(get mirror v) v]) k v)
-                               (assoc mirror v k)))
+    (cons [this [k v]] (assoc this k v))
     (equiv [this o]
            (or (and (isa? (class o) InvertedSurjection)
                     (= active (.active ^InvertedSurjection o)))
