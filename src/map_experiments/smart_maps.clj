@@ -250,15 +250,88 @@
   ([coll & vs]
    (inverse (apply dissoc (inverse coll) vs))))
 
-; (defn sorted-bijection-by
-;   ([comp-both]
-;    (Bijection. nil (sorted-map-by comp-both) (sorted-map-by comp-both)))
-;   ([comp-active comp-mirror]
-;    (Bijection. nil (sorted-map-by comp-active) (sorted-map-by comp-mirror)))
-;   ([comp-active comp-mirror & keyvals]
-;    (apply assoc (sorted-bijection-by comp-active comp-mirror) keyvals)))
+(defprotocol IAttributeMap
+  "Protocol for a map from keys to attribute-value pairs."
+  (keys-with [m a v]
+    "Returns all keys with attribute a associated with value v.")
+  (keys-with-any [m a]
+    "Returns all keys with attribute a.")
+  (attr-get [m k a] [m k a not-found]
+    "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
+  (attr-assoc [m k a v]
+    "Associates attribute a with value v for key k.")
+  (attr-dissoc [m k a]
+    "Dissociates attribute a from key k.")
+  (attr-remove [m a]
+    "Removes all instances of attribute a from the map."))
 
-; (defn sorted-bijection
-;   ([] (sorted-bijection-by compare))
-;   ([& keyvals]
-;    (apply assoc (sorted-bijection) keyvals)))
+(deftype- AttributeMap [metadata keys-attrs contents]
+  IAttributeMap
+    (keys-with [this a v]
+               (get (inverse (get contents a)) v))
+    (keys-with-any [this a]
+                   (get (inverse keys-attrs) a))
+    (attr-get [this k a]
+              (get (get contents a) k))
+    (attr-get [this k a not-found]
+              (get (get contents a) k not-found))
+    (attr-assoc [this k a v]
+                (AttributeMap.
+                  metadata
+                  (assoc keys-attrs k a)
+                  (assoc contents a ((fnil assoc (surjection)) (get contents a) k v))))
+    (attr-dissoc [this k a]
+                 (if-let [old-v-map (get contents a)]
+                   (AttributeMap.
+                     metadata
+                     (disj keys-attrs [k a])
+                     (if (< 1 (count old-v-map))
+                         (assoc contents a (dissoc old-v-map k))
+                         (dissoc contents a)))
+                   this))
+    (attr-remove [this a]
+                 (AttributeMap.
+                   metadata
+                   (rdissoc keys-attrs a)
+                   (dissoc contents a)))
+  IPersistentMap
+    (assoc [this k a-v-map]
+           (reduce conj this (map (partial cons k) a-v-map)))
+    (without [this k]
+             (AttributeMap.
+               metadata
+               (dissoc keys-attrs k)
+               (reduce #(assoc %1 %2 (dissoc (get %1 %2) k))
+                       contents
+                       (get keys-attrs k))))
+  IPersistentCollection
+    (cons [this [k a v]] (attr-assoc this k a v))
+    (equiv [this o]
+           (and (isa? (class o) AttributeMap)
+                (= contents (.contents ^AttributeMap o))))
+    (empty [this] (AttributeMap. metadata (empty keys-attrs) (empty contents)))
+    (count [this] (count keys-attrs))
+  Associative
+    (containsKey [this k] (contains? keys-attrs k))
+    (entryAt     [this k] (when (contains? this k)
+                                (clojure.lang.MapEntry. k (get this k))))
+  ILookup
+    (valAt [this k]
+           (into {} (map (comp (juxt key #(get (val %) k))
+                                 (partial find contents))
+                           (get keys-attrs k))))
+    (valAt [this k not-found]
+           (if (contains? this k)
+               (get this k)
+               not-found))
+  Seqable (seq      [this]   (map (partial find this) (keys keys-attrs)))
+  IFn     (invoke   [this k] (get this k))
+  IMeta   (meta     [this]   metadata)
+  IObj    (withMeta [this new-meta] (AttributeMap. new-meta keys-attrs contents))
+  Object  (toString [this]   (str (into {} (seq this))))
+  MapEquivalence)
+
+(defn attribute-map
+  ([] (AttributeMap. nil (bipartite) (hash-map)))
+  ([& keyvals]
+   (apply assoc (attribute-map) keyvals)))
