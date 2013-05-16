@@ -1,4 +1,5 @@
 (ns map-experiments.smart-maps
+  (:require [clojure.set :as set])
   (:import [clojure.lang
               IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
@@ -13,6 +14,10 @@
 (defprotocol Invertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
+
+(extend-protocol Invertible
+  nil
+  (inverse [m] nil))
 
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
@@ -254,7 +259,7 @@
   "Protocol for a map from keys to attribute-value pairs."
   (keys-with [m a v]
     "Returns all keys with attribute a associated with value v.")
-  (keys-with-any [m a]
+  (keys-with-attr [m a]
     "Returns all keys with attribute a.")
   (attr-get [m k a] [m k a not-found]
     "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
@@ -269,8 +274,8 @@
   IAttributeMap
     (keys-with [this a v]
                (get (inverse (get contents a)) v))
-    (keys-with-any [this a]
-                   (get (inverse keys-attrs) a))
+    (keys-with-attr [this a]
+                    (get (inverse keys-attrs) a))
     (attr-get [this k a]
               (get (get contents a) k))
     (attr-get [this k a not-found]
