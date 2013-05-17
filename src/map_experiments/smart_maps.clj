@@ -56,7 +56,12 @@
     (without [this k]
              (SetMap. metadata (dissoc contents k)))
   IPersistentCollection
-    (cons [this [k v]] (assoc this k v))
+    (cons [this x]
+          (if (and (sequential? x) (= 2 (count x)))
+              (let [[k v] x]
+                (assoc this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
     (equiv [this o]
            (or (and (isa? (class o) SetMap)
                     (= contents (.contents ^SetMap o)))
@@ -97,7 +102,12 @@
                        (assoc (dissoc mirror (get active k)) v k)))
     (without [this k] (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this [k v]] (assoc this k v))
+    (cons [this x]
+          (if (and (sequential? x) (= 2 (count x)))
+              (let [[k v] x]
+                (assoc this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
     (equiv [this o] 
            (or (and (isa? (class o) Bijection)
                     (= active (.active ^Bijection o)))
@@ -134,7 +144,12 @@
     (without [this k]
              (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this [k v]] (assoc this k v))
+    (cons [this x]
+          (if (and (sequential? x) (= 2 (count x)))
+              (let [[k v] x]
+                (assoc this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
     (equiv [this o]
            (or (and (isa? (class o) Bipartite)
                     (= active (.active ^Bipartite o)))
@@ -173,7 +188,12 @@
     (without [this k] 
              (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this [k v]] (assoc this k v))
+    (cons [this x]
+          (if (and (sequential? x) (= 2 (count x)))
+              (let [[k v] x]
+                (assoc this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
     (equiv [this o]
            (or (and (isa? (class o) Surjection)
                     (= active (.active ^Surjection o)))
@@ -212,7 +232,12 @@
     (without [this k] 
              (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this [k v]] (assoc this k v))
+    (cons [this x]
+          (if (and (sequential? x) (= 2 (count x)))
+              (let [[k v] x]
+                (assoc this k v))
+              (throw (IllegalArgumentException.
+                       "Vector arg to map conj must be a pair"))))
     (equiv [this o]
            (or (and (isa? (class o) InvertedSurjection)
                     (= active (.active ^InvertedSurjection o)))
