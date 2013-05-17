@@ -303,7 +303,11 @@
                    (dissoc contents a)))
   IPersistentMap
     (assoc [this k a-v-map]
-           (reduce conj this (map (partial cons k) a-v-map)))
+           (try
+             (reduce conj this (map (partial cons k) a-v-map))
+             (catch Exception e
+               (throw (IllegalArgumentException.
+                        "Value argument to AttributeMap assoc must be a map of attributes and values, or a sequence which can be converted into such.")))))
     (without [this k]
              (AttributeMap.
                metadata
@@ -312,7 +316,12 @@
                        contents
                        (get keys-attrs k))))
   IPersistentCollection
-    (cons [this [k a v]] (attr-assoc this k a v))
+    (cons [this x]
+          (if (= 3 (count x))
+              (let [[k a v] x]
+                (attr-assoc this k a v))
+              (throw (IllegalArgumentException.
+                       "Vector arg to AttributeMap conj must be a 3-tuple. "))))
     (equiv [this o]
            (and (isa? (class o) AttributeMap)
                 (= contents (.contents ^AttributeMap o))))
