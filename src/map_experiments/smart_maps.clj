@@ -15,13 +15,38 @@
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
 
+; Extend the Invertible protocol to nil, for reasons of internal use.
 (extend-protocol Invertible nil (inverse [m] nil))
+
+(defprotocol IAttributeMap
+  "Protocol for a map from keys to attribute-value pairs."
+  (keys-with [m a v]
+    "Returns all keys with attribute a associated with value v.")
+  (keys-with-attr [m a]
+    "Returns all keys with attribute a.")
+  (attr-get [m k a] [m k a not-found]
+    "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
+  (attr-assoc [m k a v]
+    "Associates attribute a with value v for key k.")
+  (attr-dissoc [m k a]
+    "Dissociates attribute a from key k.")
+  (attr-remove [m a]
+    "Removes all instances of attribute a from the map."))
 
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
   print-method
   IPersistentMap
   IPersistentSet)
+
+; Forward declaration of coroutined constructors for surjection types.
+(declare inverted-surjection- surjection-)
+
+; Forward declaration of all the factory functions for the types in this file.
+(declare set-map surjection bijection bipartite attr-map)
+
+; I use rdissoc before it is defined, in the AttributeMap definition.
+(declare rdissoc)
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
@@ -135,9 +160,6 @@
   Object  (toString [this]   (str active))
   MapEquivalence)
 
-; Forward declaration of coroutined constructors for surjection types.
-(declare inverted-surjection- surjection-)
-
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
 (deftype- Surjection [metadata
                      ^IPersistentMap active
@@ -222,52 +244,6 @@
 (defn- surjection-
   ([metadata active mirror] (Surjection. metadata active mirror)))
 
-; Factory functions for the core datatypes in this file:
-
-(defn set-map
-  "Creates a SetMap, which is a smart map that overrides assoc so that every value is a set of all values which have been associated with it; that is, assoc is non-overwriting."
-  ([] (SetMap. nil (hash-map)))
-  ([& keyvals]
-   (apply assoc (set-map) keyvals)))
-
-(defn bijection
-  "Creates a Bijection, which is an invertible map that preserves a bijective (1-to-1) mapping. That is, both keys and values are guaranteed to be unique; assoc overwrites any extant keys or values, also removing their associated pairings."
-  ([] (Bijection. nil (hash-map) (hash-map)))
-  ([& keyvals]
-   (apply assoc (bijection) keyvals)))
-
-(defn surjection
-  "Creates a Surjection, which is an invertible map which functions as a drop-in replacement for the standard map. Inverts into an InvertedSurjection, which behaves like a SetMap that is constrained to preserving the surjective property of the original map -- and which may be inverted back into a Surjection."
-  ([] (Surjection. nil (hash-map) (set-map)))
-  ([& keyvals]
-   (apply assoc (surjection) keyvals)))
-
-(defn bipartite
-  "Creates a Bipartite, which is an invertible map which maintains a mapping from keys to sets of values, and values to sets of keys -- that is, essentially an invertible SetMap. So named because it is a bipartite graph in semantic structure."
-  ([] (Bipartite. nil (set-map) (set-map)))
-  ([& keyvals]
-   (apply assoc (bipartite) keyvals)))
-
-(defn rdissoc
-  "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
-  ([coll & vs]
-   (inverse (apply dissoc (inverse coll) vs))))
-
-(defprotocol IAttributeMap
-  "Protocol for a map from keys to attribute-value pairs."
-  (keys-with [m a v]
-    "Returns all keys with attribute a associated with value v.")
-  (keys-with-attr [m a]
-    "Returns all keys with attribute a.")
-  (attr-get [m k a] [m k a not-found]
-    "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
-  (attr-assoc [m k a v]
-    "Associates attribute a with value v for key k.")
-  (attr-dissoc [m k a]
-    "Dissociates attribute a from key k.")
-  (attr-remove [m a]
-    "Removes all instances of attribute a from the map."))
-
 ; An AttributeMap is a mapping from keys to attribute-value pairs.
 ; It presents itself as a map where values are maps, but is also optimized for fast queries about which keys have particular attributes. The underlying implementation is *not* the same as the view presented by toString and print-method; rather, an AttributeMap is internally a bijection between keys and attributes they have, as well as a map where values are attributes and keys are surjections from keys to values (for that attribute).
 (deftype- AttributeMap [metadata keys-attrs contents]
@@ -315,11 +291,14 @@
                        (get keys-attrs k))))
   IPersistentCollection
     (cons [this x]
-          (if (= 3 (count x))
-              (let [[k a v] x]
-                (attr-assoc this k a v))
-              (throw (IllegalArgumentException.
-                       "Vector arg to AttributeMap conj must be a 3-tuple. "))))
+          (if (instance? clojure.lang.MapEntry x)
+              (let [[k a-v-map] x]
+                (reduce conj this (map (partial cons k) a-v-map)))
+              (if (= 3 (count x))
+                (let [[k a v] x]
+                  (attr-assoc this k a v))
+                (throw (IllegalArgumentException.
+                         "Vector arg to AttributeMap conj must be a 3-tuple. ")))))
     (equiv [this o]
            (and (isa? (class o) AttributeMap)
                 (= contents (.contents ^AttributeMap o))))
@@ -345,16 +324,52 @@
   Object  (toString [this]   (str (into {} (seq this))))
   MapEquivalence)
 
+; Factory functions for the core datatypes in this file:
+
+(defn set-map
+  "Creates a SetMap, which is a smart map that overrides assoc so that every value is a set of all values which have been associated with it; that is, assoc is non-overwriting."
+  ([] (SetMap. nil (hash-map)))
+  ([& keyvals]
+   (apply assoc (set-map) keyvals)))
+
+(defn bijection
+  "Creates a Bijection, which is an invertible map that preserves a bijective (1-to-1) mapping. That is, both keys and values are guaranteed to be unique; assoc overwrites any extant keys or values, also removing their associated pairings."
+  ([] (Bijection. nil (hash-map) (hash-map)))
+  ([& keyvals]
+   (apply assoc (bijection) keyvals)))
+
+(defn surjection
+  "Creates a Surjection, which is an invertible map which functions as a drop-in replacement for the standard map. Inverts into an InvertedSurjection, which behaves like a SetMap that is constrained to preserving the surjective property of the original map -- and which may be inverted back into a Surjection."
+  ([] (Surjection. nil (hash-map) (set-map)))
+  ([& keyvals]
+   (apply assoc (surjection) keyvals)))
+
+(defn bipartite
+  "Creates a Bipartite, which is an invertible map which maintains a mapping from keys to sets of values, and values to sets of keys -- that is, essentially an invertible SetMap. So named because it is a bipartite graph in semantic structure."
+  ([] (Bipartite. nil (set-map) (set-map)))
+  ([& keyvals]
+   (apply assoc (bipartite) keyvals)))
+
 (defn attr-map
+  "Creates an AttributeMap, which is a map where all values are maps between attributes and values. Supports fast lookup of keys based on attributes and values."
   ([] (AttributeMap. nil (bipartite) (hash-map)))
   ([& keyvals]
    (apply assoc (attr-map) keyvals)))
 
+; Some other functions for use with some of the datatypes:
+
+(defn rdissoc
+  "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
+  ([coll & vs]
+   (inverse (apply dissoc (inverse coll) vs))))
+
 (defn keys-with-all
+  "Returns all keys which match every attribute-value pair specified in the map."
   ([m a-v-map]
    (apply set/intersection (map (partial apply keys-with m) a-v-map))))
 
 (defn specific-key
+  "Returns nil if no keys match, a key if one key matches, or an error if more than one key matches the specification. Designed to be used when it is known that particular types of queries are guaranteed to be unique."
   ([m a-v-map]
    (when-let [s (keys-with-all m a-v-map)]
      (if (= 1 (count s))
