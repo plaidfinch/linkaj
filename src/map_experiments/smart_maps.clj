@@ -292,14 +292,14 @@
   IPersistentCollection
     (cons [this x]
           (cond (instance? clojure.lang.MapEntry x)
-                  (let [[k a-v-map] x] (assoc k a-v-map))
+                  (let [[k a-v-map] x] (assoc this k a-v-map))
                 (map? x)
                   (reduce (partial apply assoc) this x)
                 (= 3 (count x))
-                  (let [[k a v] x]
-                    (attr-assoc this k a v))
+                  (let [[k a v] x] (attr-assoc this k a v))
+                :else
                   (throw (IllegalArgumentException.
-                           "Vector arg to AttributeMap conj must be a 3-tuple. ")))))
+                           "Argument to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
     (equiv [this o]
            (and (isa? (class o) AttributeMap)
                 (= contents (.contents ^AttributeMap o))))
