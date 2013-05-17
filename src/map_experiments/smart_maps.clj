@@ -15,18 +15,13 @@
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
 
-(extend-protocol Invertible
-  nil
-  (inverse [m] nil))
+(extend-protocol Invertible nil (inverse [m] nil))
 
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
   print-method
   IPersistentMap
   IPersistentSet)
-
-; Forward declaration of coroutined constructors for surjection types.
-(declare inverted-surjection- surjection-)
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
@@ -139,6 +134,9 @@
   IMeta   (meta     [this]   metadata)
   Object  (toString [this]   (str active))
   MapEquivalence)
+
+; Forward declaration of coroutined constructors for surjection types.
+(declare inverted-surjection- surjection-)
 
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
 (deftype- Surjection [metadata
@@ -350,7 +348,7 @@
 (defn attr-map
   ([] (AttributeMap. nil (bipartite) (hash-map)))
   ([& keyvals]
-   (apply assoc (attribute-map) keyvals)))
+   (apply assoc (attr-map) keyvals)))
 
 (defn keys-with-all
   ([m a-v-map]
