@@ -329,12 +329,12 @@
                        (get keys-attrs k))))
   IPersistentCollection
     (cons [this x]
-          (cond (instance? clojure.lang.MapEntry x)
+          (cond (and (sequential? x) (= 3 (count x)))
+                  (let [[k a v] x] (attr-assoc this k a v))
+                (instance? clojure.lang.MapEntry x)
                   (let [[k a-v-map] x] (assoc this k a-v-map))
                 (map? x)
                   (reduce (partial apply assoc) this x)
-                (and (sequential? x) (= 3 (count x)))
-                  (let [[k a v] x] (attr-assoc this k a v))
                 :else
                   (throw (IllegalArgumentException.
                            "Argument to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
