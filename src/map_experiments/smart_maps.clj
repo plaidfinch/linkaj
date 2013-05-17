@@ -295,7 +295,7 @@
                   (let [[k a-v-map] x] (assoc this k a-v-map))
                 (map? x)
                   (reduce (partial apply assoc) this x)
-                (= 3 (count x))
+                (and (sequential? x) (= 3 (count x)))
                   (let [[k a v] x] (attr-assoc this k a v))
                 :else
                   (throw (IllegalArgumentException.
