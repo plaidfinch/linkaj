@@ -3,14 +3,6 @@
   (:import [clojure.lang
               IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
-; http://clojuredocs.org/clojure_contrib/clojure.contrib.types/deftype-
-(defmacro deftype-
-  "Same as deftype but the constructor is private."
-  [type-tag constructor-name & optional]
-  `(deftype ~type-tag
-     ~(vary-meta constructor-name assoc :private true)
-     ~@optional))
-
 (defprotocol Invertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
@@ -60,6 +52,14 @@
 ; All types are defined as private because their naked constructors DO NOT GUARANTEE VALID INTERNAL STATE. Do not use the naked constructors for any of these types; instead, you should use the factory functions listed near the bottom of this file.
 
 ; --------------------------------------------------------------------------------
+
+; http://clojuredocs.org/clojure_contrib/clojure.contrib.types/deftype-
+(defmacro deftype-
+  "Same as deftype but the constructor is private."
+  [type-tag constructor-name & optional]
+  `(deftype ~type-tag
+     ~(vary-meta constructor-name assoc :private true)
+     ~@optional))
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
