@@ -48,6 +48,17 @@
 ; I use rdissoc before it is defined, in the AttributeMap definition.
 (declare rdissoc)
 
+; Here begins the meat of the file: the type definitions for the various classes contained herein. Ordering is as follows:
+
+; SetMap
+; Bijection
+; Bipartite
+; Surjection
+; InvertedSurjection
+; AttributeMap
+
+; All types are defined as private because their naked constructors DO NOT GUARANTEE VALID INTERNAL STATE. Do not use the naked constructors for any of these types; instead, you should use the factory functions listed near the bottom of this file.
+
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype- SetMap [metadata contents]
   IPersistentMap
