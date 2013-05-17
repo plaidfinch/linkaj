@@ -270,6 +270,8 @@
   (attr-remove [m a]
     "Removes all instances of attribute a from the map."))
 
+; An AttributeMap is a mapping from keys to attribute-value pairs.
+; It presents itself as a map where values are maps, but is also optimized for fast queries about which keys have particular attributes. The underlying implementation is *not* the same as the view presented by toString and print-method; rather, an AttributeMap is internally a bijection between keys and attributes they have, as well as a map where values are attributes and keys are surjections from keys to values (for that attribute).
 (deftype- AttributeMap [metadata keys-attrs contents]
   IAttributeMap
     (keys-with [this a v]
@@ -323,8 +325,8 @@
   ILookup
     (valAt [this k]
            (into {} (map (comp (juxt key #(get (val %) k))
-                                 (partial find contents))
-                           (get keys-attrs k))))
+                               (partial find contents))
+                         (get keys-attrs k))))
     (valAt [this k not-found]
            (if (contains? this k)
                (get this k)
@@ -336,7 +338,19 @@
   Object  (toString [this]   (str (into {} (seq this))))
   MapEquivalence)
 
-(defn attribute-map
+(defn attr-map
   ([] (AttributeMap. nil (bipartite) (hash-map)))
   ([& keyvals]
    (apply assoc (attribute-map) keyvals)))
+
+(defn keys-with-all
+  ([m a-v-map]
+   (apply set/intersection (map (partial apply keys-with m) a-v-map))))
+
+(defn specific-key
+  ([m a-v-map]
+   (when-let [s (keys-with-all m a-v-map)]
+     (if (= 1 (count s))
+         (first s)
+         (throw (IllegalArgumentException.
+                  (str "The " (count s) " keys " s " each have have all the attribute(s) " a-v-map "; more specificity is required to match only a single key.")))))))
