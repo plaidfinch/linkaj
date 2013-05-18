@@ -23,7 +23,9 @@
   (attr-dissoc [m k a]
     "Dissociates attribute a from key k.")
   (attr-remove [m a]
-    "Removes all instances of attribute a from the map."))
+    "Removes all instances of attribute a from the map.")
+  (attr-rename [m old-attr new-attr]
+    "Renames old-attr to new-attr in the map."))
 
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
@@ -313,6 +315,14 @@
                    metadata
                    (rdissoc keys-attrs a)
                    (dissoc contents a)))
+    (attr-rename [this old-attr new-attr]
+                 (AttributeMap.
+                   metadata
+                   (inverse
+                     (into (dissoc (inverse keys-attrs) old-attr)
+                           (map (partial vector new-attr)
+                                (get (inverse keys-attrs) old-attr))))
+                   (assoc (dissoc contents old-attr) new-attr (get contents old-attr))))
   IPersistentMap
     (assoc [this k a-v-map]
            (try
