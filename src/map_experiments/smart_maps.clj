@@ -3,12 +3,12 @@
   (:import [clojure.lang
               IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
-(defprotocol Invertible
+(defprotocol IInvertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
 
-; Extend the Invertible protocol to nil, for reasons of internal use.
-(extend-protocol Invertible nil (inverse [m] nil))
+; Extend the IInvertible protocol to nil, for reasons of internal use.
+(extend-protocol IInvertible nil (inverse [m] nil))
 
 (defprotocol IAttributeMap
   "Protocol for a map from keys to attribute-value pairs."
@@ -105,11 +105,11 @@
   Object  (toString [this]   (str contents))
   MapEquivalence)
 
-; Invertible map that preserves a bijective property amongst its elements.
+; IInvertible map that preserves a bijective property amongst its elements.
 (deftype- Bijection [metadata
                     ^IPersistentMap active
                     ^IPersistentMap mirror]
-  Invertible (inverse [this] (Bijection. metadata mirror active))
+  IInvertible (inverse [this] (Bijection. metadata mirror active))
   IPersistentMap
     (assoc [this k v]
            (Bijection. metadata
@@ -152,7 +152,7 @@
 (deftype- Bipartite [metadata
                     ^SetMap active
                     ^SetMap mirror]
-  Invertible (inverse [this] (Bipartite. metadata mirror active))
+  IInvertible (inverse [this] (Bipartite. metadata mirror active))
   IPersistentMap
     (assoc [this k v]
            (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
@@ -194,7 +194,7 @@
 (deftype- Surjection [metadata
                      ^IPersistentMap active
                      ^SetMap mirror]
-  Invertible (inverse [this] (inverted-surjection- metadata mirror active))
+  IInvertible (inverse [this] (inverted-surjection- metadata mirror active))
   IPersistentMap
     (assoc [this k v]
            (Surjection. metadata
@@ -238,7 +238,7 @@
 (deftype- InvertedSurjection [metadata
                              ^SetMap active
                              ^IPersistentMap mirror]
-  Invertible (inverse [this] (surjection- metadata mirror active))
+  IInvertible (inverse [this] (surjection- metadata mirror active))
   IPersistentMap
     (assoc [this k v]
            (InvertedSurjection. metadata
@@ -408,7 +408,7 @@
 ; Some other functions for use with some of the datatypes:
 
 (defn rdissoc
-  "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
+  "Dissociates every key mapped to any value in vs. Works only with things implementing the IInvertible protocol."
   ([coll & vs]
    (inverse (apply dissoc (inverse coll) vs))))
 
