@@ -55,16 +55,8 @@
 
 ; --------------------------------------------------------------------------------
 
-; http://clojuredocs.org/clojure_contrib/clojure.contrib.types/deftype-
-(defmacro deftype-
-  "Same as deftype but the constructor is private."
-  [type-tag constructor-name & optional]
-  `(deftype ~type-tag
-     ~(vary-meta constructor-name assoc :private true)
-     ~@optional))
-
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
-(deftype- SetMap [metadata contents]
+(deftype SetMap [metadata contents]
   IPersistentMap
     (assoc [this k v]
            (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
@@ -106,7 +98,7 @@
   MapEquivalence)
 
 ; Invertible map that preserves a bijective property amongst its elements.
-(deftype- Bijection [metadata
+(deftype Bijection [metadata
                     ^IPersistentMap active
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
@@ -149,7 +141,7 @@
   MapEquivalence)
 
 ; Dual (invertible) SetMap with no restrictions on associations; that is to say, a bipartite graph.
-(deftype- Bipartite [metadata
+(deftype Bipartite [metadata
                     ^SetMap active
                     ^SetMap mirror]
   Invertible (inverse [this] (Bipartite. metadata mirror active))
@@ -191,7 +183,7 @@
   MapEquivalence)
 
 ; Drop-in replacement for normal associative map, with the additional functionality of invertibility. Yields an InvertedSurjection when inverted.
-(deftype- Surjection [metadata
+(deftype Surjection [metadata
                      ^IPersistentMap active
                      ^SetMap mirror]
   Invertible (inverse [this] (inverted-surjection- metadata mirror active))
@@ -235,7 +227,7 @@
   MapEquivalence)
 
 ; Dual of Surjection. Behaves like a SetMap, except it preserves the surjective property of the original map. Yields a Surjection when inverted.
-(deftype- InvertedSurjection [metadata
+(deftype InvertedSurjection [metadata
                              ^SetMap active
                              ^IPersistentMap mirror]
   Invertible (inverse [this] (surjection- metadata mirror active))
@@ -286,7 +278,7 @@
 
 ; An AttributeMap is a mapping from keys to attribute-value pairs.
 ; It presents itself as a map where values are maps, but is also optimized for fast queries about which keys have particular attributes. The underlying implementation is *not* the same as the view presented by toString and print-method; rather, an AttributeMap is internally a bijection between keys and attributes they have, as well as a map where values are attributes and keys are surjections from keys to values (for that attribute).
-(deftype- AttributeMap [metadata keys-attrs contents]
+(deftype AttributeMap [metadata keys-attrs contents]
   IAttributeMap
     (keys-with [this a v]
                (get (inverse (get contents a)) v))
