@@ -43,7 +43,7 @@
   (get-edge [graph edge-key]
     "Returns a map of all attributes for edge-key.")
   (add-edge [graph attributes]
-    "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites. If a relation points to a non-extant node, that node will be created.")
+    "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites.")
   (remove-edge [graph edge-key]
     "Removes edge-key from the graph.")
   (assoc-edge [graph edge-key attributes]
