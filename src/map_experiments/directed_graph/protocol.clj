@@ -9,13 +9,11 @@
 
 (defprotocol Constrained
   "Protocol for an object with arbitrary constraints which can be added or removed."
-  (constraints [o]
-    "Returns a map of all constraints enforced by the object.")
-  (add-constraint [o k f]
-    "Adds a constraint function f to the object o with the key k. Future alterations to the object will be handed to the constraint function to verify and modify.")
-  (remove-constraint [o k]
-    "Removes constraint with key k from the object. Future alterations will not be checked against this constraint.")
-  (assert-constraints [o]
+  (add-constraint [o f]
+    "Adds a constraint function f to the object o. Future alterations to the object will be handed to the constraint function to verify and modify.")
+  (reset-constraints [o]
+    "Removes all constraints from the object.")
+  (verify-constraints [o]
     "Checks every constraint against every part of the object. Useful only in the rare situation when constraints are added to post-construction and are desired to be backwards-checked against the existing object."))
 
 (defprotocol IDirectedGraph

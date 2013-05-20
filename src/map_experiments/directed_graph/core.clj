@@ -45,7 +45,7 @@
                         node-id-seq
                         edge-id-seq
                         relations-map
-                        constraints-map
+                        constraints-fn
                         metadata]
   
   IDirectedGraph
@@ -193,8 +193,7 @@
                                 "One or both of the relations specified is not present in the object or is not related to the other relation given."))))
   
   Constrained
-  (constraints [this] constraints-map)
-  (add-constraint [this k f]
+  (add-constraint [this f]
                   (do (assert (not (contains? constraints-map k))
                               (str "Object already has a constraint with key " k))
                       (DirectedGraph.
@@ -203,16 +202,16 @@
                         node-id-seq
                         edge-id-seq
                         relations-map
-                        (assoc constraints-map k f)
+                        (comp f constraints-fn)
                         metadata)))
-  (remove-constraint [this k]
+  (reset-constraints [this]
                      (DirectedGraph.
                        nodes-map
                        edges-map
                        node-id-seq
                        edge-id-seq
                        relations-map
-                       (dissoc constraints-map k)
+                       (fn [graph k] graph)
                        metadata))
   (assert-constraints [this] "NOT YET IMPLEMENTED"))
 
@@ -244,15 +243,15 @@
   ([graph attributes]
    (reduce add-node graph (map-cross attributes))))
 
-(defn add-edges
-  "Adds all possible nodes matching attributes (format like query) to the graph."
-  ([graph attributes]
-   (reduce add-edge graph (map-cross attributes))))
-
 (defn get-edges
   "Gets the values of all node keys given from the graph."
   ([graph node-keys]
    (map (partial get-edge graph) (edges graph))))
+
+(defn add-edges
+  "Adds all possible nodes matching attributes (format like query) to the graph."
+  ([graph attributes]
+   (reduce add-edge graph (map-cross attributes))))
 
 ; Special threading macro graph-> to allow automatic context for queries and threading through multiple operations to boot.
 
