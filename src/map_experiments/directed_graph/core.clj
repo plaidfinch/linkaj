@@ -1,7 +1,9 @@
 (ns map-experiments.directed-graph.core
   (:require [map-experiments.directed-graph.protocol :refer :all]
             [map-experiments.smart-maps              :refer :all]
-            [clojure.set                             :refer :all]))
+            [clojure.set                             :refer :all])
+  (:import [clojure.lang
+              IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
@@ -72,7 +74,7 @@
                   (rest node-id-seq)
                   edge-id-seq
                   relations-map
-                  constraints-map
+                  constraints-fn
                   metadata)))
   (remove-node [this node-key]
                (assert false "THIS METHOD NEEDS TO BE FIXED: REMOVE CONNECTED EDGES")
@@ -84,7 +86,7 @@
                      node-id-seq)
                  edge-id-seq
                  relations-map
-                 constraints-map
+                 constraints-fn
                  metadata))
   (assoc-node [this node-key attributes]
               (if (or (key-overlap? attributes relations-map)
@@ -100,7 +102,7 @@
                         node-id-seq
                         edge-id-seq
                         relations-map
-                        constraints-map
+                        constraints-fn
                         metadata))))
   (dissoc-node [this node-key attribute-keys]
                (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
@@ -114,7 +116,7 @@
                           node-id-seq
                           edge-id-seq
                           relations-map
-                          constraints-map
+                          constraints-fn
                           metadata))))
   ; Methods acting on edges:
   (edges [this]
@@ -147,7 +149,7 @@
                                     node-id-seq
                                     (rest edge-id-seq)
                                     relations-map
-                                    constraints-map
+                                    constraints-fn
                                     metadata)))))))
   (remove-edge [this edge-key]
                (DirectedGraph.
@@ -158,7 +160,7 @@
                      (cons edge-key edge-id-seq)
                      edge-id-seq)
                  relations-map
-                 constraints-map
+                 constraints-fn
                  metadata))
   
   
@@ -177,7 +179,7 @@
                   node-id-seq
                   edge-id-seq
                   (assoc relations-map r1 r2)
-                  constraints-map
+                  constraints-fn
                   metadata))
   (remove-relation [this r1 r2]
                    (if (related-in? this r1 r2)
@@ -187,7 +189,7 @@
                          node-id-seq
                          edge-id-seq
                          (dissoc (rdissoc relations-map r1) r1)
-                         constraints-map
+                         constraints-fn
                          metadata)
                        (throw (IllegalArgumentException.
                                 "One or both of the relations specified is not present in the object or is not related to the other relation given."))))
@@ -211,14 +213,44 @@
                        relations-map
                        (fn [graph k] graph)
                        metadata))
-  (assert-constraints [this] "NOT YET IMPLEMENTED"))
+  (verify-constraints [this] "NOT YET IMPLEMENTED")
+  
+  ILookup
+    (valAt [this k]
+           (or (get-edge this k) (get-node this k)))
+    (valAt [this k not-found]
+           (if (contains? this k)
+               (get this k)
+               not-found))
+  
+  Associative
+    (containsKey [this k]
+                 (or (contains? edges-map k)
+                     (contains? nodes-map k)))
+    (entryAt [this k]
+             (when (contains? this k)
+                   (clojure.lang.MapEntry. k (get this k))))
+  
+  IMeta
+    (meta [this] metadata)
+    
+  IObj
+    (withMeta [this new-meta]
+              (DirectedGraph.
+                nodes-map
+                edges-map
+                node-id-seq
+                edge-id-seq
+                relations-map
+                constraints-fn
+                new-meta)))
 
 (defn digraph []
   (DirectedGraph.
     (attr-map)
     (attr-map)
-    (map (comp keyword (partial str "N-")) (iterate inc 0))
-    (map (comp keyword (partial str "E-")) (iterate inc 0))
+    (iterate (comp inc inc) 0)
+    (iterate (comp inc inc) 1)
     (bijection)
     (hash-map)
     (hash-map)))
@@ -258,9 +290,9 @@
   (fn [form symb] (class form)))
 
 ; This is used to stop graph threading inside its application
-(declare graph-|)
+(declare g-|)
 (def graph-stop-threading-symb
-  (symbol "graph-|"))
+  (symbol "g-|"))
 
 ; Any list beginning with a symbol that resolves to something in the core or protocol namespace is prefixed with the threaded symbol.
 (defmethod graph-thread-insert clojure.lang.PersistentList [form symb]
@@ -299,7 +331,7 @@
 (defmethod graph-thread-insert :default [form symb]
   form)
 
-(defmacro graph->
+(defmacro g->
   "Threads a graph through a series of computations, like ->, except the graph is also recursively inserted as the first argument to every graph-related function in any form. This establishes a local context so that queries like (node {:foo true}) need not reference the graph, even nested inside maps and vectors for other queries."
   ([x] x)
   ([x form]
