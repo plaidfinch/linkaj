@@ -254,17 +254,14 @@
   ([graph node-keys]
    (map (partial get-edge graph) (edges graph))))
 
-; This is so that the graph-> macro can modify only the forms which relate to graph operations, leaving other functions untouched.
-(def ^:private core-ns
-  (find-ns (ns-name 'map-experiments.directed-graph.core)))
-(def ^:private protocol-ns
-  (find-ns (ns-name 'map-experiments.directed-graph.protocol)))
-(def ^:private graph-namespaces
-  [core-ns protocol-ns])
-
 ; Graph-thread-insert does the work of the traversal for the graph-> macro.
-(defmulti ^:private graph-thread-insert
+(defmulti graph-thread-insert
   (fn [form symb] (class form)))
+
+; This is used to stop graph threading inside its application
+(declare graph-|)
+(def graph-stop-threading-symb
+  (symbol "graph-|"))
 
 ; Any list beginning with a symbol that resolves to something in the core or protocol namespace is prefixed with the threaded symbol.
 (defmethod graph-thread-insert clojure.lang.PersistentList [form symb]
@@ -272,13 +269,12 @@
     (let [function (first form)
           rest-form (map #(graph-thread-insert % symb) (rest form))]
          (if (symbol? function)
-             (let [function-ns (:ns (meta (resolve function)))]
-                  (if (some (partial = function-ns) graph-namespaces)
-                      (cons (first form)
-                            (cons symb
-                                  (map #(graph-thread-insert % symb)
-                                       (rest form))))
-                      (cons function rest-form)))
+             (if (= (resolve function) (resolve graph-stop-threading-symb))
+                 `(do ~@(rest form))
+                 (cons (first form)
+                       (cons symb
+                             (map #(graph-thread-insert % symb)
+                                  (rest form)))))
              (cons (graph-thread-insert function symb) rest-form)))
     (meta form)))
 
