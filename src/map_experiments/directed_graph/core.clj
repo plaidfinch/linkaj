@@ -254,6 +254,8 @@
   ([graph node-keys]
    (map (partial get-edge graph) (edges graph))))
 
+; Special threading macro graph-> to allow automatic context for queries and threading through multiple operations to boot.
+
 ; Graph-thread-insert does the work of the traversal for the graph-> macro.
 (defmulti graph-thread-insert
   (fn [form symb] (class form)))
