@@ -351,9 +351,11 @@
                                 (clojure.lang.MapEntry. k (get this k))))
   ILookup
     (valAt [this k]
-           (into {} (map (comp (juxt key #(get (val %) k))
-                               (partial find contents))
-                         (get keys-attrs k))))
+           (let [result
+                 (into {} (map (comp (juxt key #(get (val %) k))
+                                     (partial find contents))
+                               (get keys-attrs k)))]
+           (when (seq result) result)))
     (valAt [this k not-found]
            (if (contains? this k)
                (get this k)
