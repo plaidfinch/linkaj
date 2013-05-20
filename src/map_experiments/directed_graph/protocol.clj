@@ -31,11 +31,11 @@
   (add-node [graph attributes]
     "Adds a node with attributes to the graph.")
   (remove-node [graph node-key]
-    "Removes all nodes in node-keys from the graph, as well as all edges which are directly connected to these nodes.")
+    "Removes node-key from the graph, as well as all edges which are directly connected to this node.")
   (assoc-node [graph node-key attributes]
-    "Associates all nodes in node-keys with attributes.")
+    "Associates node-key with attributes.")
   (dissoc-node [graph node-key attribute-keys]
-    "Dissociates all nodes in node-keys from attribute-keys.")
+    "Dissociates node-key from attribute-keys.")
   
   ; Methods acting on edges:
   (edges [graph] [graph query]
@@ -47,9 +47,9 @@
   (add-edge [graph attributes]
     "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites. If a relation points to a non-extant node, that node will be created.")
   (remove-edge [graph edge-key]
-    "Removes all edges in edge-keys from the graph.")
+    "Removes edge-key from the graph.")
   (assoc-edge [graph edge-key attributes]
-    "Associates all edges in edge-keys with attributes. This may change relations if relations are used in attributes.")
+    "Associates edge-key with attributes. This may change relations if relations are used in attributes.")
   (dissoc-edge [graph edge-key attribute-keys]
-    "Dissociates all edge in edge-keys from attribute-keys. Relations cannot be dissociated."))
+    "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."))
 
