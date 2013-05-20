@@ -202,7 +202,7 @@
                         node-id-seq
                         edge-id-seq
                         relations-map
-                        (comp f constraints-fn)
+                        (fn [graph k] (f (constraints-fn graph k) k))
                         metadata)))
   (reset-constraints [this]
                      (DirectedGraph.
