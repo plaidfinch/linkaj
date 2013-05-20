@@ -194,16 +194,14 @@
   
   Constrained
   (add-constraint [this f]
-                  (do (assert (not (contains? constraints-map k))
-                              (str "Object already has a constraint with key " k))
-                      (DirectedGraph.
-                        nodes-map
-                        edges-map
-                        node-id-seq
-                        edge-id-seq
-                        relations-map
-                        (fn [graph k] (f (constraints-fn graph k) k))
-                        metadata)))
+                  (DirectedGraph.
+                    nodes-map
+                    edges-map
+                    node-id-seq
+                    edge-id-seq
+                    relations-map
+                    (fn [graph k] (f (constraints-fn graph k) k))
+                    metadata))
   (reset-constraints [this]
                      (DirectedGraph.
                        nodes-map
