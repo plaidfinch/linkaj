@@ -48,8 +48,8 @@
     "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites. If a relation points to a non-extant node, that node will be created.")
   (remove-edge [graph edge-key]
     "Removes all edges in edge-keys from the graph.")
-  (assoc-edges [graph edge-key attributes]
+  (assoc-edge [graph edge-key attributes]
     "Associates all edges in edge-keys with attributes. This may change relations if relations are used in attributes.")
-  (dissoc-edges [graph edge-key attribute-keys]
+  (dissoc-edge [graph edge-key attribute-keys]
     "Dissociates all edge in edge-keys from attribute-keys. Relations cannot be dissociated."))
 
