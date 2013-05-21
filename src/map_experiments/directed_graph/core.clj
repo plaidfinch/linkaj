@@ -181,43 +181,37 @@
                     relations-map constraints-fn metadata)))
   (assoc-edge [this edge-key attributes]
               ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
-              (if (let [[relations rest-attrs]
-                        (parse-relations attributes relations-map)]
-                       (case (count relations)
-                             0 (assoc edges-map edge-key attributes)
-                             1 (let [r1 (key (first relations))]
-                                    (cond (not (attr-get edges-map
-                                                         edge-key
-                                                         (opposite relations-map r1)))
-                                          (throw (IllegalArgumentException.
-                                                   "Edge relations must be opposites"))
-                                          (not (node? this (relations r1)))
-                                          (throw (IllegalArgumentException.
-                                                   "Edges must connect existing nodes"))
-                                          :else true))
-                             2 (let [[r1 r2] (keys relations)]
-                                    (cond (not (= r1 (opposite relations-map r2)))
-                                          (throw (IllegalArgumentException.
-                                                   "Edge relations must be opposites"))
-                                          (not (attr-get edges-map
-                                                         edge-key
-                                                         (opposite relations-map r1)))
-                                          (throw (IllegalArgumentException.
-                                                   "The type of relation for an edge may not be altered."))
-                                          (not (and (node? this (relations r1))
-                                                    (node? this (relations r2))))
-                                          (throw (IllegalArgumentException.
-                                                   "Edges must connect existing nodes"))
-                                          :else true))
-                             (throw (IllegalArgumentException.
-                                      "Edges must be related to exactly 2 nodes."))))
-                  (if (not (edge? this edge-key))
-                      this
+              (cond (not (edge? this edge-key)) this
+                    (let [[relations rest-attrs]
+                          (parse-relations attributes relations-map)
+                          [r1 r2] (keys relations)]
+                         (case (count relations)
+                               0 true
+                               1 (cond (not (attr-get edges-map edge-key
+                                                      (opposite relations-map r1)))
+                                       (throw (IllegalArgumentException.
+                                                "The type of relation for an edge may not be altered."))
+                                       (not (node? this (relations r1)))
+                                       (throw (IllegalArgumentException.
+                                                "Edges must connect existing nodes"))
+                                       :else true)
+                               2 (cond (or (not (= r1 (opposite relations-map r2)))
+                                           (not (attr-get edges-map edge-key
+                                                          (opposite relations-map r1))))
+                                       (throw (IllegalArgumentException.
+                                                "The type of relation for an edge may not be altered."))
+                                       (not (and (node? this (relations r1))
+                                                 (node? this (relations r2))))
+                                       (throw (IllegalArgumentException.
+                                                "Edges must connect existing nodes"))
+                                       :else true)
+                               (throw (IllegalArgumentException.
+                                        "Edges must be related to exactly 2 nodes"))))
                       (#(constraints-fn % edge-key)
                          (DirectedGraph.
                            nodes-set nodes-map
                            (assoc edges-map edge-key attributes)
-                           node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+                           node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -270,7 +264,10 @@
                        nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
                        (fn [graph k] graph)
                        metadata))
-  (verify-constraints [this] "NOT YET IMPLEMENTED")
+  (verify-constraints [this]
+                      (reduce constraints-fn
+                              this
+                              (concat (nodes this) (edges this))))
   
   ILookup
   (valAt [this k]
