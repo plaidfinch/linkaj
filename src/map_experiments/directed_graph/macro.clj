@@ -7,9 +7,9 @@
   (fn [form symb] (class form)))
 
 ; This is used to stop graph threading inside its application
-(declare g-|)
+(declare -#|)
 (def graph-stop-threading-symb
-  (symbol "g-|"))
+  (symbol "-#|"))
 
 ; Any list beginning with a symbol that resolves to something in the core or protocol namespace is prefixed with the threaded symbol.
 (defmethod graph-thread-insert clojure.lang.PersistentList [form symb]
@@ -48,7 +48,7 @@
 (defmethod graph-thread-insert :default [form symb]
   form)
 
-(defmacro g->
+(defmacro -#>
   "Threads a graph through a series of computations, like ->, except the graph is also recursively inserted as the first argument to every graph-related function in any form. This establishes a local context so that queries like (node {:foo true}) need not reference the graph, even nested inside maps and vectors for other queries."
   ([x] x)
   ([x form]
