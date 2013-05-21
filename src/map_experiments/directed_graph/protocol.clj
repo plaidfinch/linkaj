@@ -1,5 +1,9 @@
 (ns map-experiments.directed-graph.protocol)
 
+(defprotocol IComponent
+  "Protocol for a component of a larger data structure."
+  (id [this] "Returns the id of the component"))
+
 (defprotocol Relational
   "Protocol for an object with relations and opposites which can be added or removed." 
   (relations       [o]       "Returns a bijection between all relations.")
