@@ -1,5 +1,6 @@
 (ns map-experiments.directed-graph.core
   (:require [map-experiments.directed-graph.protocol :refer :all]
+            [map-experiments.directed-graph.macro    :refer :all]
             [map-experiments.smart-maps              :refer :all]
             [clojure.set                             :refer :all])
   (:import [clojure.lang
@@ -195,11 +196,13 @@
                                           :else true))
                              (throw (IllegalArgumentException.
                                       "Edges must be related to exactly 2 nodes."))))
-                  (#(constraints-fn % edge-key)
-                     (DirectedGraph.
-                       nodes-set nodes-map
-                       (assoc edges-map edge-key attributes) ; <--- CHANGES
-                       node-id-seq edge-id-seq relations-map constraints-fn metadata))))
+                  (if (not (edge? this edge-key))
+                      this
+                      (#(constraints-fn % edge-key)
+                         (DirectedGraph.
+                           nodes-set nodes-map
+                           (assoc edges-map edge-key attributes) ; <--- CHANGES
+                           node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -278,16 +281,20 @@
               nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
               new-meta))) ; <--- CHANGES
 
-(defn digraph []
-  (DirectedGraph.
-    (hash-set)
-    (attr-map)
-    (attr-map)
-    (iterate (comp inc inc) 0)
-    (iterate (comp inc inc) 1)
-    (bijection)
-    (fn [graph k] graph)
-    (hash-map)))
+(defn digraph
+  ([] (DirectedGraph.
+        (hash-set)
+        (attr-map)
+        (attr-map)
+        (iterate (comp inc inc) 0)
+        (iterate (comp inc inc) 1)
+        (bijection)
+        (fn [graph k] graph)
+        (hash-map)))
+  ([& {:keys [relations constraints]}]
+   (reduce add-constraint
+           (reduce (partial apply add-relation) (digraph) relations)
+           constraints)))
 
 (def node
   "For selecting a single node when you know the query is unique."
@@ -307,6 +314,21 @@
   ([graph attributes]
    (reduce add-node graph (map-cross attributes))))
 
+(defn remove-nodes
+  "Removes all nodes in node-keys from the graph."
+  ([graph node-keys attributes]
+   (reduce remove-node graph node-keys)))
+
+(defn assoc-nodes
+  "Associates all nodes in node-keys with the attributes."
+  ([graph node-keys attributes]
+   (reduce #(assoc-node %1 %2 attributes) graph node-keys)))
+
+(defn dissoc-nodes
+  "Dissociates all nodes in node-keys from the attribute-keys."
+  ([graph node-keys attribute-keys]
+   (reduce #(dissoc-node %1 %2 attribute-keys) graph node-keys)))
+
 (defn get-edges
   "Gets the values of all node keys given from the graph."
   ([graph node-keys]
@@ -317,62 +339,17 @@
   ([graph attributes]
    (reduce add-edge graph (map-cross attributes))))
 
-; Special threading macro graph-> to allow automatic context for queries and threading through multiple operations to boot.
+(defn remove-edges
+  "Removes all edges in edge-keys from the graph."
+  ([graph edge-keys attributes]
+   (reduce remove-edge graph edge-keys)))
 
-; Graph-thread-insert does the work of the traversal for the graph-> macro.
-(defmulti graph-thread-insert
-  (fn [form symb] (class form)))
+(defn assoc-edges
+  "Associates all edges in edge-keys with the attributes."
+  ([graph edge-keys attributes]
+   (reduce #(assoc-edge %1 %2 attributes) graph edge-keys)))
 
-; This is used to stop graph threading inside its application
-(declare g-|)
-(def graph-stop-threading-symb
-  (symbol "g-|"))
-
-; Any list beginning with a symbol that resolves to something in the core or protocol namespace is prefixed with the threaded symbol.
-(defmethod graph-thread-insert clojure.lang.PersistentList [form symb]
-  (with-meta
-    (let [function (first form)
-          rest-form (map #(graph-thread-insert % symb) (rest form))]
-         (if (symbol? function)
-             (if (= (resolve function) (resolve graph-stop-threading-symb))
-                 `(do ~@(rest form))
-                 (cons (first form)
-                       (cons symb
-                             (map #(graph-thread-insert % symb)
-                                  (rest form)))))
-             (cons (graph-thread-insert function symb) rest-form)))
-    (meta form)))
-
-; Multimethod dispatches on class, which requires me to duplicate for ArrayMap and HashMap, as both of these can show up in reader literals, depending on how large they are.
-(defmethod graph-thread-insert clojure.lang.PersistentHashMap [form symb]
-  (with-meta
-    (zipmap (keys form) (map #(graph-thread-insert % symb) (vals form)))
-    (meta form)))
-(defmethod graph-thread-insert clojure.lang.PersistentArrayMap [form symb]
-  (with-meta
-    (zipmap (keys form) (map #(graph-thread-insert % symb) (vals form)))
-    (meta form)))
-
-; Vectors are traversed but not modified if they have no graph forms in them.
-(defmethod graph-thread-insert clojure.lang.PersistentVector [form symb]
-  (with-meta (vec (map #(graph-thread-insert % symb) form)) (meta form)))
-
-; Sets are traversed but not modified if they have no graph forms in them.
-(defmethod graph-thread-insert clojure.lang.PersistentHashSet [form symb]
-  (with-meta (set (map #(graph-thread-insert % symb) form)) (meta form)))
-
-; Anything not listed above is not traversed.
-(defmethod graph-thread-insert :default [form symb]
-  form)
-
-(defmacro g->
-  "Threads a graph through a series of computations, like ->, except the graph is also recursively inserted as the first argument to every graph-related function in any form. This establishes a local context so that queries like (node {:foo true}) need not reference the graph, even nested inside maps and vectors for other queries."
-  ([x] x)
-  ([x form]
-   (if (seq? form)
-       (let [let-symb (gensym)]
-            `(let [~let-symb ~x] ; avoid re-computing operations using let statement
-                  ~(graph-thread-insert form let-symb)))
-       (list form x)))
-  ([x form & more] `(g-> (g-> ~x ~form) ~@more)))
-
+(defn dissoc-edges
+  "Dissociates all edges in edge-keys from the attribute-keys."
+  ([graph edge-keys attribute-keys]
+   (reduce #(dissoc-edge %1 %2 attribute-keys) graph edge-keys)))
