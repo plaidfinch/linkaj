@@ -230,17 +230,15 @@
                   (assoc relations-map r1 r2) ; <--- CHANGES
                   constraints-fn metadata))
   (remove-relation [this r1 r2]
-                   (if (related-in? this r1 r2)
+                   (if (and (related-in? this r1 r2)
+                            (nil? (keys-with-attr edges-map r1))
+                            (nil? (keys-with-attr edges-map r2)))
                        (DirectedGraph.
-                         nodes-set nodes-map
-                         (reduce dissoc edges-map                        ;  \
-                                 (concat (keys-with-attr edges-map r1)   ;  < -- CHANGES
-                                         (keys-with-attr edges-map r2))) ;  /
-                         node-id-seq edge-id-seq
+                         nodes-set nodes-map edges-map node-id-seq edge-id-seq
                          (dissoc (rdissoc relations-map r1) r1) ; <--- CHANGES
                          constraints-fn metadata)
                        (throw (IllegalArgumentException.
-                                "One or both of the relations specified is not present in the object or is not related to the other relation given."))))
+                                "Relation could not be removed from graph for one of the following reasons: a) the two relations given are not each others' opposites; b) there are existing edges along this relation"))))
   
   Constrained
   (add-constraint [this f]
