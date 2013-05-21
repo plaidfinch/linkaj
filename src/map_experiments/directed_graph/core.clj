@@ -52,9 +52,9 @@
   (id [this] id)
   IPersistentMap
   (assoc [this k v] (with-meta (assoc (get nodes-map id) k v) metadata))
-  (without [this k] (with-meta (dissoc (get nodes-map id) k)) metadata)
+  (without [this k] (with-meta (dissoc (get nodes-map id) k) metadata))
   IPersistentCollection
-  (cons [this x] (with-meta (conj (get nodes-map id) x)) metadata)
+  (cons [this x] (with-meta (conj (get nodes-map id) x) metadata))
   (equiv [this o]
          (and (isa? (class o) GraphNode)
               (= id (.id ^GraphNode o))
@@ -80,6 +80,71 @@
 
 (defn graph-node [graph nodes-map id]
   (GraphNode. nil graph id nodes-map))
+
+(defn make-edge-map [graph id nodes-map edges-map relations-map]
+  (let [edge-map (get edges-map id)
+        rels (keys (select-keys edge-map (mapcat identity relations-map)))]
+       (reduce conj edge-map
+               (map #(vector % (graph-node graph nodes-map (get edge-map %)))
+                    rels))))
+
+(deftype GraphEdge [metadata graph id nodes-map edges-map relations-map]
+  IComponent
+  (id [this] id)
+  IPersistentMap
+  (assoc [this k v]
+         (with-meta
+           (assoc (make-edge-map graph id nodes-map edges-map relations-map) k v)
+           metadata))
+  (without [this k]
+           (with-meta
+             (dissoc (make-edge-map graph id nodes-map edges-map relations-map) k)
+             metadata))
+  IPersistentCollection
+  (cons [this x]
+        (with-meta
+          (conj (make-edge-map graph id nodes-map edges-map relations-map) x)
+          metadata))
+  (equiv [this o]
+         (and (isa? (class o) GraphEdge)
+              (= id (.id ^GraphEdge o))
+              (= edges-map (.edges-map ^GraphEdge o))))
+  (empty [this] (with-meta {} metadata))
+  (count [this] (count (make-edge-map graph id nodes-map edges-map relations-map)))
+  IObj (withMeta [this new-meta] (GraphEdge. new-meta graph id nodes-map edges-map relations-map))
+  Associative
+  (containsKey [this k]
+               (if (attr-get edges-map id k) true false))
+  (entryAt [this k]
+           (when (contains? this k)
+                 (clojure.lang.MapEntry. k (get this k))))
+  ILookup
+  (valAt [this k] (get this k nil))
+  (valAt [this k not-found]
+         (if (contains? this k)
+             (let [v (attr-get edges-map id k)]
+                  (if (relation-in? graph k)
+                      (if (node-in? graph (graph-node graph nodes-map v))
+                          (graph-node graph nodes-map v)
+                          (throw (IllegalStateException.
+                                   "Illegal internal state in graph edge: stored node does not match stored graph!")))
+                      v))
+             not-found))
+  Seqable
+  (seq [this]
+       (seq (make-edge-map graph id nodes-map edges-map relations-map)))
+  Object
+  (toString [this]
+            (str (make-edge-map graph id nodes-map edges-map relations-map)))
+  IFn (invoke [this k] (get this k))
+  IMeta (meta [this] metadata)
+  MapEquivalence)
+
+(defn edge? [x]
+  (instance? GraphEdge x))
+
+(defn graph-edge [graph nodes-map edges-map relations-map id]
+  (GraphEdge. nil graph id nodes-map edges-map relations-map))
 
 ; The type definition itself!
 
@@ -111,7 +176,7 @@
                                                       edges-map %
                                                       (opposite relations-map a))
                                                    (keys-with edges-map a (id v)))))
-                                  (apply union
+                                  (apply (comp set union)
                                          (for [v vs]
                                               (keys-with nodes-map a v)))))))))
   (node-in? [this o]
@@ -125,7 +190,8 @@
                          "Attributes may not be identical to existing relations"))
                 (let [node-key (first node-id-seq)
                       new-nodes-map (assoc nodes-map node-key attributes)]
-                     (#(constraints-fn % (graph-node this node-key new-nodes-map))
+                     (#(constraints-fn
+                         % (graph-node % node-key new-nodes-map))
                         (DirectedGraph.
                           (conj nodes-set node-key)
                           new-nodes-map
@@ -133,61 +199,83 @@
                           (rest node-id-seq)
                           edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this n]
-               (let [node-key (id n)
-                     edges-to-remove (edges-touching this n)]
-                    (#(constraints-fn % n)
-                       (DirectedGraph.
-                         (disj nodes-set node-key)
-                         (dissoc nodes-map node-key)
-                         (apply dissoc edges-map edges-to-remove)
-                         (if (node-in? this n)
-                             (cons node-key node-id-seq)
-                             node-id-seq)
-                         (concat edges-to-remove edge-id-seq)
-                         relations-map constraints-fn metadata))))
+               (if (not (node-in? this n))
+                   (throw (IllegalArgumentException.
+                            "Cannot remove node whose origin is another graph."))
+                   (let [node-key (id n)
+                         edges-to-remove (edges-touching this n)
+                         new-nodes-map (dissoc nodes-map node-key)]
+                        (#(constraints-fn
+                            % (graph-node % node-key new-nodes-map))
+                           (DirectedGraph.
+                             (disj nodes-set node-key)
+                             new-nodes-map
+                             (apply dissoc edges-map edges-to-remove)
+                             (if (node-in? this n)
+                                 (cons node-key node-id-seq)
+                                 node-id-seq)
+                             (concat edges-to-remove edge-id-seq)
+                             relations-map constraints-fn metadata)))))
   (assoc-node [this n attributes]
-              (let [node-key (id n)]
-                   (if (cond (or (key-overlap? attributes relations-map)
-                                 (key-overlap? attributes (inverse relations-map)))
-                             (throw (IllegalArgumentException.
-                                      "Attributes may not be existing relations"))
-                             (not (node-in? this n))
-                             (throw (IllegalArgumentException.
-                                      "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
-                             :else true)
-                       (#(constraints-fn % n)
-                          (DirectedGraph.
-                            nodes-set
-                            (assoc nodes-map node-key attributes)
-                            edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+              (if (not (node-in? this n))
+                  (throw (IllegalArgumentException.
+                           "Cannot assoc to node whose origin is in another graph."))
+                  (let [node-key (id n)
+                        new-nodes-map (assoc nodes-map node-key attributes)]
+                       (if (cond (or (key-overlap? attributes relations-map)
+                                     (key-overlap? attributes (inverse relations-map)))
+                                 (throw (IllegalArgumentException.
+                                          "Attributes may not be existing relations"))
+                                 (not (node-in? this n))
+                                 (throw (IllegalArgumentException.
+                                          "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
+                                 :else true)
+                           (#(constraints-fn
+                               % (graph-node % node-key new-nodes-map))
+                              (DirectedGraph.
+                                nodes-set
+                                new-nodes-map
+                                edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
   (dissoc-node [this n attribute-keys]
-               (let [node-key (id n)
-                     new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
-                                           nodes-map attribute-keys)]
-                    (#(constraints-fn % n)
-                       (DirectedGraph.
-                         nodes-set
-                         new-nodes-map
-                         edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
-  
+               (if (not (node-in? this n))
+                   (throw (IllegalArgumentException.
+                            "Cannot dissoc from node with origin is in another graph."))
+                   (let [node-key (id n)
+                         new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
+                                               nodes-map attribute-keys)]
+                        (#(constraints-fn
+                            % (graph-node % node-key new-nodes-map))
+                           (DirectedGraph.
+                             nodes-set
+                             new-nodes-map
+                             edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+
   ; Methods acting on edges:
   (edges [this]
-         (when (< 0 (count edges-map))
-               (apply hash-set (keys edges-map))))
+         (map (partial graph-edge this nodes-map edges-map relations-map)
+              (when (< 0 (count edges-map))
+                    (apply hash-set (keys edges-map)))))
   (edges [this query]
-         (if (not (seq query))
-             (edges this)
-             (apply intersection
-                    (for [[a vs] query]
-                         (apply union
-                                (for [v vs]
-                                     (keys-with edges-map a v)))))))
+         (map (partial graph-edge this nodes-map edges-map relations-map)
+              (if (not (seq query))
+                  (edges this)
+                  (apply intersection
+                         (for [[a vs] query]
+                              (if (relation-in? this a)
+                                  (apply (comp set union)
+                                         (for [v vs]
+                                              (keys-with edges-map a (id v))))
+                                  (apply (comp set union)
+                                         (for [v vs]
+                                              (keys-with edges-map a v)))))))))
   (edge-in? [this o]
-            (contains? edges-map o))
+            (and (edge? o)
+                 (= this (.graph ^GraphEdge o))
+                 (contains? edges-map (id o))))
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
-            (if (let [[relations rest-attrs] (parse-relations attributes relations-map)]
-                     (if (not= 2 (count relations))
+            (let [[relations rest-attrs] (parse-relations attributes relations-map)]
+                 (if (if (not= 2 (count relations))
                          (throw (IllegalArgumentException.
                                   "An edge must have relations to exactly two nodes"))
                          (let [[r1 r2] (keys relations)]
@@ -198,73 +286,97 @@
                                               (node-in? this (relations r2))))
                                     (throw (IllegalArgumentException.
                                              "Edges must connect existing nodes"))
-                                    :else true))))
-                (let [edge-key (first edge-id-seq)]
-                     (#(constraints-fn % edge-key)
-                        (DirectedGraph.
-                          nodes-set nodes-map
-                          (assoc edges-map edge-key attributes)
-                          node-id-seq
-                          (rest edge-id-seq)
-                          relations-map constraints-fn metadata)))))
-  (remove-edge [this edge-key]
-               (#(constraints-fn % edge-key)
-                  (DirectedGraph.
-                    nodes-set nodes-map
-                    (dissoc edges-map edge-key)
-                    node-id-seq
-                    (if (edge-in? this edge-key)
-                        (cons edge-key edge-id-seq)
-                        edge-id-seq)
-                    relations-map constraints-fn metadata)))
-  (assoc-edge [this edge-key attributes]
-              ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
-              (cond (not (edge-in? this edge-key)) this
-                    (let [[relations rest-attrs]
-                          (parse-relations attributes relations-map)
-                          [r1 r2] (keys relations)]
-                         (case (count relations)
-                               0 true
-                               1 (cond (not (attr-get edges-map edge-key
-                                                      (opposite relations-map r1)))
-                                       (throw (IllegalArgumentException.
-                                                "The type of relation for an edge may not be altered."))
-                                       (not (node-in? this (relations r1)))
-                                       (throw (IllegalArgumentException.
-                                                "Edges must connect existing nodes"))
-                                       :else true)
-                               2 (cond (or (not (= r1 (opposite relations-map r2)))
-                                           (not (attr-get edges-map edge-key
-                                                          (opposite relations-map r1))))
-                                       (throw (IllegalArgumentException.
-                                                "The type of relation for an edge may not be altered."))
-                                       (not (and (node-in? this (relations r1))
-                                                 (node-in? this (relations r2))))
-                                       (throw (IllegalArgumentException.
-                                                "Edges must connect existing nodes"))
-                                       :else true)
-                               (throw (IllegalArgumentException.
-                                        "Edges must be related to exactly 2 nodes"))))
-                    (#(constraints-fn % edge-key)
-                       (DirectedGraph.
-                         nodes-set nodes-map
-                         (assoc edges-map edge-key attributes)
-                         node-id-seq edge-id-seq relations-map constraints-fn metadata))))
-  (dissoc-edge [this edge-key attribute-keys]
-               ; Validate that there are no relations being dissoced
-               (let [[relations rest-attrs]
-                     (parse-relations
-                       (into {} (map vector attribute-keys (repeat nil)))
-                       relations-map)]
-                    (if (not= 0 (count relations))
-                        (throw (IllegalArgumentException.
-                                 "An edge cannot be disconnected from a node without being connected to another node"))
-                        (#(constraints-fn % edge-key)
+                                    :else true)))
+                     (let [edge-key
+                           (first edge-id-seq)
+                           new-edges-map
+                           (assoc edges-map edge-key
+                                  (merge rest-attrs
+                                         (zipmap (keys relations)
+                                                 (map id (vals relations)))))]
+                          (#(constraints-fn
+                              % (graph-edge % nodes-map new-edges-map relations-map edge-key))
+                             (DirectedGraph.
+                               nodes-set nodes-map
+                               new-edges-map
+                               node-id-seq
+                               (rest edge-id-seq)
+                               relations-map constraints-fn metadata))))))
+            (remove-edge [this e]
+               (if (not (edge-in? this e))
+                   (throw (IllegalArgumentException.
+                            "Cannot remove edge with origin in another graph."))
+                   (let [edge-key (id e)
+                         new-edges-map (dissoc edges-map edge-key)]
+                        (#(constraints-fn
+                            % (graph-edge % nodes-map new-edges-map relations-map edge-key))
                            (DirectedGraph.
                              nodes-set nodes-map
-                             (reduce #(attr-dissoc %1 edge-key %2)
-                                     edges-map attribute-keys)
-                             node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+                             new-edges-map
+                             node-id-seq
+                             (if (edge-in? this edge-key)
+                                 (cons edge-key edge-id-seq)
+                                 edge-id-seq)
+                             relations-map constraints-fn metadata)))))
+  (assoc-edge [this e attributes]
+              ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
+              (let [edge-key (id e)
+                    new-edges-map (assoc edges-map edge-key attributes)]
+                   (cond (not (edge-in? this e))
+                         (throw (IllegalArgumentException.
+                                  "Cannot remove edge with origin in another graph."))
+                         (let [[relations rest-attrs]
+                               (parse-relations attributes relations-map)
+                               [r1 r2] (keys relations)]
+                              (case (count relations)
+                                    0 true
+                                    1 (cond (not (attr-get edges-map edge-key
+                                                           (opposite relations-map r1)))
+                                            (throw (IllegalArgumentException.
+                                                     "The type of relation for an edge may not be altered."))
+                                            (not (node-in? this (relations r1)))
+                                            (throw (IllegalArgumentException.
+                                                     "Edges must be connected to existing nodes"))
+                                            :else true)
+                                    2 (cond (or (not (= r1 (opposite relations-map r2)))
+                                                (not (attr-get edges-map edge-key
+                                                               (opposite relations-map r1))))
+                                            (throw (IllegalArgumentException.
+                                                     "The type of relation for an edge may not be altered."))
+                                            (not (and (node-in? this (relations r1))
+                                                      (node-in? this (relations r2))))
+                                            (throw (IllegalArgumentException.
+                                                     "Edges must be connected to existing nodes"))
+                                            :else true)
+                                    (throw (IllegalArgumentException.
+                                             "Edges must relate to exactly 2 nodes"))))
+                         (#(constraints-fn
+                             % (graph-edge % nodes-map new-edges-map relations-map edge-key))
+                            (DirectedGraph.
+                              nodes-set nodes-map
+                              new-edges-map
+                              node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+  (dissoc-edge [this e attribute-keys]
+               ; Validate that there are no relations being dissoced
+               (if (not (edge-in? this e))
+                   (throw (IllegalArgumentException.
+                            "Cannot remove edge with origin in another graph."))
+                   (let [edge-key (id e)
+                         new-edges-map (reduce #(attr-dissoc %1 edge-key %2)
+                                               edges-map attribute-keys)
+                         [relations rest-attrs]
+                         (parse-relations
+                           (into {} (map vector attribute-keys (repeat nil)))
+                           relations-map)]
+                        (if (not= 0 (count relations))
+                            (throw (IllegalArgumentException.
+                                     "An edge cannot be disconnected from a node without being connected to another node"))
+                            (#(constraints-fn
+                                % (graph-edge % nodes-map new-edges-map relations-map edge-key))
+                               (DirectedGraph.
+                                 nodes-set nodes-map
+                                 new-edges-map
+                                 node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
   
   Relational
   (relations [this] relations-map)
