@@ -82,7 +82,7 @@
                (DirectedGraph.
                  (dissoc nodes-map node-key)
                  edges-map
-                 (if (contains? nodes-map node-key)
+                 (if (node? this node-key)
                      (cons node-key node-id-seq)
                      node-id-seq)
                  edge-id-seq
@@ -94,7 +94,7 @@
                             (key-overlap? attributes (inverse relations-map)))
                         (throw (IllegalArgumentException.
                                  "Attributes may not be existing relations"))
-                        (not (contains? nodes-map node-key))
+                        (not (node? this node-key))
                         (throw (IllegalArgumentException.
                                  "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
                         :else true)
@@ -145,8 +145,8 @@
                               (cond (not (= r1 (opposite relations-map r2)))
                                     (throw (IllegalArgumentException.
                                              "Relations for an edge must be opposites"))
-                                    (not (and (contains? nodes-map (relations r1))
-                                              (contains? nodes-map (relations r2))))
+                                    (not (and (node? this (relations r1))
+                                              (node? this (relations r2))))
                                     (throw (IllegalArgumentException.
                                              "Edges must connect existing nodes"))
                                     :else true))))
@@ -163,7 +163,7 @@
                  nodes-map
                  (dissoc edges-map edge-key)
                  node-id-seq
-                 (if (contains? edges-map edge-key)
+                 (if (edge? this edge-key)
                      (cons edge-key edge-id-seq)
                      edge-id-seq)
                  relations-map
@@ -181,7 +181,7 @@
                                                          (opposite relations-map r1)))
                                           (throw (IllegalArgumentException.
                                                    "Edge relations must be opposites"))
-                                          (not (contains? nodes-map (relations r1)))
+                                          (not (node? this (relations r1)))
                                           (throw (IllegalArgumentException.
                                                    "Edges must connect existing nodes"))
                                           :else true))
@@ -194,8 +194,8 @@
                                                          (opposite relations-map r1)))
                                           (throw (IllegalArgumentException.
                                                    "The type of relation for an edge may not be altered."))
-                                          (not (and (contains? nodes-map (relations r1))
-                                                    (contains? nodes-map (relations r2))))
+                                          (not (and (node? this (relations r1))
+                                                    (node? this (relations r2))))
                                           (throw (IllegalArgumentException.
                                                    "Edges must connect existing nodes"))
                                           :else true))
@@ -289,8 +289,8 @@
   
   Associative
     (containsKey [this k]
-                 (or (contains? edges-map k)
-                     (contains? nodes-map k)))
+                 (or (edge? this k)
+                     (node? this k)))
     (entryAt [this k]
              (when (contains? this k)
                    (clojure.lang.MapEntry. k (get this k))))
