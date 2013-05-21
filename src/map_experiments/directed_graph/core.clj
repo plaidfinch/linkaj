@@ -47,7 +47,7 @@
 
 ; GraphNodes are ephemeral maps which contain a hidden id. They are emitted from node queries and their keys/values are looked up lazily, which means that one can efficiently map over a set of GraphNodes without the program having to look up every value in each node.
 
-(deftype GraphNode [metadata id nodes-map]
+(deftype GraphNode [metadata graph id nodes-map]
   IComponent
   (id [this] id)
   IPersistentMap
@@ -60,7 +60,7 @@
               (= id (.id ^GraphNode o))
               (= nodes-map (.nodes-map ^GraphNode o))))
   (empty [this] (with-meta {} metadata))
-  IObj (withMeta [this new-meta] (GraphNode. new-meta id nodes-map))
+  IObj (withMeta [this new-meta] (GraphNode. new-meta graph id nodes-map))
   Associative
   (containsKey [this k] (if (attr-get nodes-map id k) true false))
   (entryAt [this k]
@@ -75,8 +75,11 @@
   Object (toString [this] (str (get nodes-map id)))
   MapEquivalence)
 
-(defn graph-node [nodes-map id]
-  (GraphNode. nil id nodes-map))
+(defn node? [x]
+  (instance? GraphNode x))
+
+(defn graph-node [graph nodes-map id]
+  (GraphNode. nil graph id nodes-map))
 
 ; The type definition itself!
 
@@ -93,10 +96,10 @@
   
   ; Methods acting on nodes:
   (nodes [this]
-         (map (partial graph-node nodes-map)
+         (map (partial graph-node this nodes-map)
               (when (< 0 (count nodes-set)) nodes-set)))
   (nodes [this query]
-         (map (partial graph-node nodes-map)
+         (map (partial graph-node this nodes-map)
               (if (not (seq query))
                   (nodes this)
                   (apply intersection
@@ -112,12 +115,9 @@
                                          (for [v vs]
                                               (keys-with nodes-map a v)))))))))
   (node-in? [this o]
-            (and (instance? GraphNode o)
-                 (= nodes-map (.nodes-map ^GraphNode o))
+            (and (node? o)
+                 (= this (.graph ^GraphNode o))
                  (contains? nodes-set (id o))))
-  (get-node [this n]
-            (if (node-in? this n)
-                (graph-node nodes-map (id n))))
   (add-node [this attributes]
             (if (or (key-overlap? attributes relations-map)
                     (key-overlap? attributes (inverse relations-map)))
@@ -125,7 +125,7 @@
                          "Attributes may not be identical to existing relations"))
                 (let [node-key (first node-id-seq)
                       new-nodes-map (assoc nodes-map node-key attributes)]
-                     (#(constraints-fn % (graph-node node-key new-nodes-map))
+                     (#(constraints-fn % (graph-node this node-key new-nodes-map))
                         (DirectedGraph.
                           (conj nodes-set node-key)
                           new-nodes-map
@@ -184,10 +184,6 @@
                                      (keys-with edges-map a v)))))))
   (edge-in? [this o]
             (contains? edges-map o))
-  (get-edge [this edge-key]
-            (let [e-m (get edges-map edge-key)
-                  rels (select-keys e-m (mapcat identity relations-map))]
-                 (into e-m (map (juxt key #(get-node this (val %))) rels))))
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
             (if (let [[relations rest-attrs] (parse-relations attributes relations-map)]
@@ -311,14 +307,6 @@
                               this
                               (concat (nodes this) (edges this))))
   
-  ILookup
-  (valAt [this k]
-         (or (get-edge this k) (get-node this k)))
-  (valAt [this k not-found]
-         (if (contains? this k)
-             (get this k)
-             not-found))
-  
   IPersistentCollection
   (equiv [this o] 
          (or (and (isa? (class o) DirectedGraph)
@@ -348,8 +336,8 @@
   Seqable
   (seq [this]
        (seq {:relations relations-map
-             :nodes (get-nodes this (nodes this))
-             :edges (get-edges this (edges this))}))
+             :nodes (-#> this nodes)
+             :edges (-#> this edges)}))
   
   Associative
   (containsKey [this k]
@@ -455,13 +443,8 @@
 (defn edges-touching
   "Finds all edges which are connected by any relation to a particular node."
   ([graph n]
-   (mapcat #(g-> graph (edges {% [n]}))
+   (mapcat #(-#> graph (edges {% [n]}))
            (mapcat identity (relations graph)))))
-
-(defn get-all
-  "Gets every node or edge (usually all one or the other) in a sequence of keys."
-  ([graph ks]
-   (map (partial get graph) ks)))
 
 (defn assoc-all
   "Associates every item (edge or node) with the attributes."
@@ -473,7 +456,7 @@
   ([graph rel n1 n2]
    (relate graph rel n1 n2 {}))
   ([graph rel n1 n2 attributes]
-   (g-> graph
-        (add-edge (g-| (assoc attributes
+   (-#> graph
+        (add-edge (-#| (assoc attributes
                               rel n1
                               (opposite (relations graph) rel) n2))))))
