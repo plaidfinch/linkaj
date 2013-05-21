@@ -135,11 +135,13 @@
          (when (< 0 (count edges-map))
                (apply hash-set (keys edges-map))))
   (edges [this query]
-         (if (seq query)
+         (if (not (seq query))
+             (edges this)
              (apply intersection
                     (for [[a vs] query]
-                         (apply union (for [v vs] (keys-with edges-map a v)))))
-             (edges this)))
+                         (apply union
+                                (for [v vs]
+                                     (keys-with edges-map a v)))))))
   (edge? [this o]
          (contains? edges-map o))
   (get-edge [this edge-key]
