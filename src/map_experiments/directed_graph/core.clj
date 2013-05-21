@@ -181,6 +181,9 @@
                                               (keys-with nodes-map a v)))))))))
   (node-in? [this o]
             (and (node? o)
+                 ; The below rigorous check breaks any method which wants to reduce a graph across a set of nodes. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
+                 ; a) You can use the API in a sensible way! It should be rather difficult to accidentally cross nodes and edges between two separate graphs, unless you're trying to do so.
+                 ; b) You can uncomment this line (and the similar one in edge-in?) to enable these integrity checks, at the cost of losing the use of every plural mutator method like those at the bottom of the file.
                  ;(= this (.graph ^GraphNode o))
                  (contains? nodes-set (id o))))
   (add-node [this attributes]
@@ -273,6 +276,9 @@
                                               (keys-with edges-map a v)))))))))
   (edge-in? [this o]
             (and (edge? o)
+                 ; The below rigorous check breaks any method which wants to reduce a graph across a set of edges. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
+                 ; a) You can use the API in a sensible way! It should be rather difficult to accidentally cross nodes and edges between two separate graphs, unless you're trying to do so.
+                 ; b) You can uncomment this line (and the similar one in node-in?) to enable these integrity checks, at the cost of losing the use of every plural mutator method like those at the bottom of the file.
                  ;(= this (.graph ^GraphEdge o))
                  (contains? edges-map (id o))))
   (add-edge [this attributes]
@@ -479,26 +485,27 @@
               nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
               new-meta)))
 
-; all node keys are even numbers
+; Default configuration for internal node and edge seqs:
 (defn- starting-node-seq []
   (repeatedly #(gensym "NODE-")))
-; all edge keys are odd numbers
 (defn- starting-edge-seq []
   (repeatedly #(gensym "EDGE-")))
 
+; Factory function for digraphs:
 (defn digraph
-  ([] (DirectedGraph.
-        (hash-set)
-        (attr-map)
-        (attr-map)
-        (starting-node-seq)
-        (starting-edge-seq)
-        (bijection)
-        (fn [old-graph new-graph k] new-graph) ; the initial constraint does nothing
-        (hash-map)))
-  ([& {:keys [relations constraints]}]
+  ([& {:keys [relations constraints internal-edge-ids internal-node-ids]}]
    (reduce add-constraint
-           (reduce (partial apply add-relation) (digraph) relations)
+           (reduce (partial apply add-relation)
+                   (DirectedGraph.
+                     (hash-set)
+                     (attr-map)
+                     (attr-map)
+                     (or (seq internal-node-ids) (starting-node-seq))
+                     (or (seq internal-edge-ids) (starting-edge-seq))
+                     (bijection)
+                     (fn [old-graph new-graph k] new-graph)
+                     (hash-map))
+                   relations)
            constraints)))
 
 ; Additional methods for semantic ease...
