@@ -42,7 +42,8 @@
          rest-attrs (apply dissoc attributes (keys relations))]
         [relations rest-attrs])))
 
-(deftype DirectedGraph [nodes-map
+(deftype DirectedGraph [nodes-set
+                        nodes-map
                         edges-map
                         node-id-seq
                         edge-id-seq
@@ -54,22 +55,27 @@
   
   ; Methods acting on nodes:
   (nodes [this]
-         (when (< 0 (count nodes-map))
-               (apply hash-set (keys nodes-map))))
+         (when (< 0 (count nodes-set)) nodes-set))
   (nodes [this query]
          (if (seq query)
              (apply intersection
                     (for [[a vs] query]
                          (apply union (for [v vs] (keys-with nodes-map a v)))))
              (nodes this)))
-  (node? [this o] (contains? nodes-map o))
-  (get-node [this node-key] (get nodes-map node-key))
+  (node? [this o]
+         (contains? nodes-set o))
+  (get-node [this node-key]
+            (if (node? this node-key)
+                (if-let [return (get nodes-map node-key)]
+                        return
+                        {})))
   (add-node [this attributes]
             (if (or (key-overlap? attributes relations-map)
                     (key-overlap? attributes (inverse relations-map)))
                 (throw (IllegalArgumentException.
                          "Attributes may not be identical to existing relations"))
                 (DirectedGraph.
+                  (conj nodes-set (first node-id-seq))
                   (assoc nodes-map (first node-id-seq) attributes)
                   edges-map
                   (rest node-id-seq)
@@ -80,6 +86,7 @@
   (remove-node [this node-key]
                (assert false "THIS METHOD NEEDS TO BE FIXED: REMOVE CONNECTED EDGES")
                (DirectedGraph.
+                 (disj nodes-set node-key)
                  (dissoc nodes-map node-key)
                  edges-map
                  (if (node? this node-key)
@@ -99,6 +106,7 @@
                                  "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
                         :else true)
                   (DirectedGraph.
+                    nodes-set
                     (assoc nodes-map node-key attributes)
                     edges-map
                     node-id-seq
@@ -107,21 +115,17 @@
                     constraints-fn
                     metadata)))
   (dissoc-node [this node-key attribute-keys]
-               ; Validating that node still has at least one attribute
-               ; This will eventually not be necessary, as attribute-less nodes will be supported by the data structure
                (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                            nodes-map attribute-keys)]
-                    (if (not= (count new-nodes-map) (count nodes-map))
-                        (throw (IllegalArgumentException.
-                                 "At least one attribute must be attached to each node for it to exist (and for it to be useful); thus, you can't remove every attribute from a node"))
-                        (DirectedGraph.
-                          new-nodes-map
-                          edges-map
-                          node-id-seq
-                          edge-id-seq
-                          relations-map
-                          constraints-fn
-                          metadata))))
+                    (DirectedGraph.
+                      nodes-set
+                      new-nodes-map
+                      edges-map
+                      node-id-seq
+                      edge-id-seq
+                      relations-map
+                      constraints-fn
+                      metadata)))
   
   ; Methods acting on edges:
   (edges [this]
@@ -133,8 +137,10 @@
                     (for [[a vs] query]
                          (apply union (for [v vs] (keys-with edges-map a v)))))
              (edges this)))
-  (edge? [this o] (contains? edges-map o))
-  (get-edge [this edge-key] (get edges-map edge-key))
+  (edge? [this o]
+         (contains? edges-map o))
+  (get-edge [this edge-key]
+            (get edges-map edge-key))
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
             (if (let [[relations rest-attrs] (parse-relations attributes relations-map)]
@@ -151,6 +157,7 @@
                                              "Edges must connect existing nodes"))
                                     :else true))))
                 (DirectedGraph.
+                  nodes-set
                   nodes-map
                   (assoc edges-map (first edge-id-seq) attributes)
                   node-id-seq
@@ -160,6 +167,7 @@
                   metadata)))
   (remove-edge [this edge-key]
                (DirectedGraph.
+                 nodes-set
                  nodes-map
                  (dissoc edges-map edge-key)
                  node-id-seq
@@ -202,13 +210,14 @@
                              (throw (IllegalArgumentException.
                                       "Edges must be related to exactly 2 nodes."))))
                   (DirectedGraph.
-                     nodes-map
-                     (assoc edges-map edge-key attributes)
-                     node-id-seq
-                     edge-id-seq
-                     relations-map
-                     constraints-fn
-                     metadata)))
+                    nodes-set
+                    nodes-map
+                    (assoc edges-map edge-key attributes)
+                    node-id-seq
+                    edge-id-seq
+                    relations-map
+                    constraints-fn
+                    metadata)))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -219,6 +228,7 @@
                         (throw (IllegalArgumentException.
                                  "An edge cannot be disconnected from a node without being re-connected to another node"))
                         (DirectedGraph.
+                          nodes-set
                           nodes-map
                           (reduce #(attr-dissoc %1 edge-key %2)
                                   edges-map attribute-keys)
@@ -238,6 +248,7 @@
                     (= r1 (opposite relations-map r2))))
   (add-relation [this r1 r2]
                 (DirectedGraph.
+                  nodes-set
                   nodes-map
                   edges-map
                   node-id-seq
@@ -248,6 +259,7 @@
   (remove-relation [this r1 r2]
                    (if (related-in? this r1 r2)
                        (DirectedGraph.
+                         nodes-set
                          nodes-map
                          edges-map
                          node-id-seq
@@ -261,6 +273,7 @@
   Constrained
   (add-constraint [this f]
                   (DirectedGraph.
+                    nodes-set
                     nodes-map
                     edges-map
                     node-id-seq
@@ -270,6 +283,7 @@
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
+                       nodes-set
                        nodes-map
                        edges-map
                        node-id-seq
@@ -301,6 +315,7 @@
   IObj
     (withMeta [this new-meta]
               (DirectedGraph.
+                nodes-set
                 nodes-map
                 edges-map
                 node-id-seq
@@ -311,6 +326,7 @@
 
 (defn digraph []
   (DirectedGraph.
+    (hash-set)
     (attr-map)
     (attr-map)
     (iterate (comp inc inc) 0)
