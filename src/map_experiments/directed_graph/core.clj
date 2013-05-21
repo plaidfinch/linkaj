@@ -6,7 +6,7 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
-(declare edges-touching starting-node-seq starting-edge-seq)
+(declare edges-touching starting-node-seq starting-edge-seq remove-edges)
 
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
@@ -181,7 +181,7 @@
                                               (keys-with nodes-map a v)))))))))
   (node-in? [this o]
             (and (node? o)
-                 (= this (.graph ^GraphNode o))
+                 ;(= this (.graph ^GraphNode o))
                  (contains? nodes-set (id o))))
   (add-node [this attributes]
             (if (or (key-overlap? attributes relations-map)
@@ -191,7 +191,7 @@
                 (let [node-key (first node-id-seq)
                       new-nodes-map (assoc nodes-map node-key attributes)]
                      (#(constraints-fn
-                         % (graph-node % node-key new-nodes-map))
+                         % (graph-node % new-nodes-map node-key))
                         (DirectedGraph.
                           (conj nodes-set node-key)
                           new-nodes-map
@@ -210,7 +210,7 @@
                                  (remove-node new-graph
                                               (graph-node new-graph nodes-map (id n))))
                             (#(constraints-fn
-                                % (graph-node % node-key new-nodes-map))
+                                % (graph-node % new-nodes-map node-key))
                                (DirectedGraph.
                                  (disj nodes-set node-key)
                                  new-nodes-map
@@ -234,7 +234,7 @@
                                           "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
                                  :else true)
                            (#(constraints-fn
-                               % (graph-node % node-key new-nodes-map))
+                               % (graph-node % new-nodes-map node-key))
                               (DirectedGraph.
                                 nodes-set
                                 new-nodes-map
@@ -247,7 +247,7 @@
                          new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                                nodes-map attribute-keys)]
                         (#(constraints-fn
-                            % (graph-node % node-key new-nodes-map))
+                            % (graph-node % new-nodes-map node-key))
                            (DirectedGraph.
                              nodes-set
                              new-nodes-map
@@ -273,7 +273,7 @@
                                               (keys-with edges-map a v)))))))))
   (edge-in? [this o]
             (and (edge? o)
-                 (= this (.graph ^GraphEdge o))
+                 ;(= this (.graph ^GraphEdge o))
                  (contains? edges-map (id o))))
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
@@ -330,7 +330,7 @@
                     new-edges-map (assoc edges-map edge-key attributes)]
                    (cond (not (edge-in? this e))
                          (throw (IllegalArgumentException.
-                                  "Cannot remove edge with origin in another graph."))
+                                  "Cannot assoc on edge with origin in another graph."))
                          (let [[relations rest-attrs]
                                (parse-relations attributes relations-map)
                                [r1 r2] (keys relations)]
@@ -366,7 +366,7 @@
                ; Validate that there are no relations being dissoced
                (if (not (edge-in? this e))
                    (throw (IllegalArgumentException.
-                            "Cannot remove edge with origin in another graph."))
+                            "Cannot dissoc from edge with origin in another graph."))
                    (let [edge-key (id e)
                          new-edges-map (reduce #(attr-dissoc %1 edge-key %2)
                                                edges-map attribute-keys)
@@ -480,10 +480,10 @@
 
 ; all node keys are even numbers
 (defn- starting-node-seq []
-  (iterate (comp inc inc) 0))
+  (repeatedly #(gensym "NODE-")))
 ; all edge keys are odd numbers
 (defn- starting-edge-seq []
-  (iterate (comp inc inc) 1))
+  (repeatedly #(gensym "EDGE-")))
 
 (defn digraph
   ([] (DirectedGraph.
