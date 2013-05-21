@@ -78,10 +78,10 @@
 (defn node? [x]
   (instance? GraphNode x))
 
-(defn graph-node [graph nodes-map id]
+(defn- graph-node [graph nodes-map id]
   (GraphNode. nil graph id nodes-map))
 
-(defn make-edge-map [graph id nodes-map edges-map relations-map]
+(defn- make-edge-map [graph id nodes-map edges-map relations-map]
   (let [edge-map (get edges-map id)
         rels (keys (select-keys edge-map (mapcat identity relations-map)))]
        (reduce conj edge-map
@@ -143,7 +143,7 @@
 (defn edge? [x]
   (instance? GraphEdge x))
 
-(defn graph-edge [graph nodes-map edges-map relations-map id]
+(defn- graph-edge [graph nodes-map edges-map relations-map id]
   (GraphEdge. nil graph id nodes-map edges-map relations-map))
 
 ; The type definition itself!
