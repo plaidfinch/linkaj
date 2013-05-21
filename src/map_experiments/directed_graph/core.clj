@@ -3,7 +3,7 @@
             [map-experiments.smart-maps              :refer :all]
             [clojure.set                             :refer :all])
   (:import [clojure.lang
-              IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
+            IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
@@ -33,7 +33,7 @@
 
 ; Private functions for internal things:
 
-(defn parse-relations
+(defn- parse-relations
   ([attributes relations-map]
    (let [relations
          (select-keys attributes
@@ -77,28 +77,22 @@
                 (let [node-key (first node-id-seq)]
                      (#(constraints-fn % node-key)
                         (DirectedGraph.
-                          (conj nodes-set node-key)
-                          (assoc nodes-map node-key attributes)
+                          (conj nodes-set node-key)  ; <--- CHANGES
+                          (assoc nodes-map node-key attributes)  ; <--- CHANGES
                           edges-map
-                          (rest node-id-seq)
-                          edge-id-seq
-                          relations-map
-                          constraints-fn
-                          metadata)))))
+                          (rest node-id-seq)  ; <--- CHANGES
+                          edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this node-key]
                (assert false "THIS METHOD NEEDS TO BE FIXED: REMOVE CONNECTED EDGES")
                (#(constraints-fn % node-key)
                   (DirectedGraph.
-                    (disj nodes-set node-key)
-                    (dissoc nodes-map node-key)
+                    (disj nodes-set node-key)  ; <--- CHANGES
+                    (dissoc nodes-map node-key)  ; <--- CHANGES
                     edges-map
-                    (if (node? this node-key)
-                        (cons node-key node-id-seq)
-                        node-id-seq)
-                    edge-id-seq
-                    relations-map
-                    constraints-fn
-                    metadata)))
+                    (if (node? this node-key)       ;  \
+                        (cons node-key node-id-seq) ;  < --- CHANGES
+                        node-id-seq)                ;  /
+                    edge-id-seq relations-map constraints-fn metadata)))
   (assoc-node [this node-key attributes]
               (if (cond (or (key-overlap? attributes relations-map)
                             (key-overlap? attributes (inverse relations-map)))
@@ -111,26 +105,16 @@
                   (#(constraints-fn % node-key)
                      (DirectedGraph.
                        nodes-set
-                       (assoc nodes-map node-key attributes)
-                       edges-map
-                       node-id-seq
-                       edge-id-seq
-                       relations-map
-                       constraints-fn
-                       metadata))))
+                       (assoc nodes-map node-key attributes)  ; <--- CHANGES
+                       edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   (dissoc-node [this node-key attribute-keys]
                (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                            nodes-map attribute-keys)]
                     (#(constraints-fn % node-key)
                        (DirectedGraph.
                          nodes-set
-                         new-nodes-map
-                         edges-map
-                         node-id-seq
-                         edge-id-seq
-                         relations-map
-                         constraints-fn
-                         metadata))))
+                         new-nodes-map ; <--- CHANGES
+                         edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   
   ; Methods acting on edges:
   (edges [this]
@@ -164,27 +148,21 @@
                 (let [edge-key (first edge-id-seq)]
                      (#(constraints-fn % edge-key)
                         (DirectedGraph.
-                          nodes-set
-                          nodes-map
-                          (assoc edges-map edge-key attributes)
+                          nodes-set nodes-map
+                          (assoc edges-map edge-key attributes) ; <--- CHANGES
                           node-id-seq
-                          (rest edge-id-seq)
-                          relations-map
-                          constraints-fn
-                          metadata)))))
+                          (rest edge-id-seq) ; <--- CHANGES
+                          relations-map constraints-fn metadata)))))
   (remove-edge [this edge-key]
                (#(constraints-fn % edge-key)
                   (DirectedGraph.
-                    nodes-set
-                    nodes-map
-                    (dissoc edges-map edge-key)
+                    nodes-set nodes-map
+                    (dissoc edges-map edge-key) ; <--- CHANGES
                     node-id-seq
-                    (if (edge? this edge-key)
-                        (cons edge-key edge-id-seq)
-                        edge-id-seq)
-                    relations-map
-                    constraints-fn
-                    metadata)))
+                    (if (edge? this edge-key)       ;  \ 
+                        (cons edge-key edge-id-seq) ;  < --- CHANGES
+                        edge-id-seq)                ;  /
+                    relations-map constraints-fn metadata)))
   (assoc-edge [this edge-key attributes]
               ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
               (if (let [[relations rest-attrs]
@@ -219,14 +197,9 @@
                                       "Edges must be related to exactly 2 nodes."))))
                   (#(constraints-fn % edge-key)
                      (DirectedGraph.
-                       nodes-set
-                       nodes-map
-                       (assoc edges-map edge-key attributes)
-                       node-id-seq
-                       edge-id-seq
-                       relations-map
-                       constraints-fn
-                       metadata))))
+                       nodes-set nodes-map
+                       (assoc edges-map edge-key attributes) ; <--- CHANGES
+                       node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -237,16 +210,11 @@
                         (throw (IllegalArgumentException.
                                  "An edge cannot be disconnected from a node without being re-connected to another node"))
                         (#(constraints-fn % edge-key)
-                          (DirectedGraph.
-                            nodes-set
-                            nodes-map
-                            (reduce #(attr-dissoc %1 edge-key %2)
-                                    edges-map attribute-keys)
-                            node-id-seq
-                            edge-id-seq
-                            relations-map
-                            constraints-fn
-                            metadata)))))
+                           (DirectedGraph.
+                             nodes-set nodes-map
+                             (reduce #(attr-dissoc %1 edge-key %2) ; \ <--- CHANGES
+                                     edges-map attribute-keys)     ; /
+                             node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   
   Relational
   (relations [this] relations-map)
@@ -258,81 +226,59 @@
                     (= r1 (opposite relations-map r2))))
   (add-relation [this r1 r2]
                 (DirectedGraph.
-                  nodes-set
-                  nodes-map
-                  edges-map
-                  node-id-seq
-                  edge-id-seq
-                  (assoc relations-map r1 r2)
-                  constraints-fn
-                  metadata))
+                  nodes-set nodes-map edges-map node-id-seq edge-id-seq
+                  (assoc relations-map r1 r2) ; <--- CHANGES
+                  constraints-fn metadata))
   (remove-relation [this r1 r2]
                    (if (related-in? this r1 r2)
                        (DirectedGraph.
-                         nodes-set
-                         nodes-map
-                         edges-map
-                         node-id-seq
-                         edge-id-seq
-                         (dissoc (rdissoc relations-map r1) r1)
-                         constraints-fn
-                         metadata)
+                         nodes-set nodes-map
+                         (reduce dissoc edges-map                        ;  \
+                                 (concat (keys-with-attr edges-map r1)   ;  < -- CHANGES
+                                         (keys-with-attr edges-map r2))) ;  /
+                         node-id-seq edge-id-seq
+                         (dissoc (rdissoc relations-map r1) r1) ; <--- CHANGES
+                         constraints-fn metadata)
                        (throw (IllegalArgumentException.
                                 "One or both of the relations specified is not present in the object or is not related to the other relation given."))))
   
   Constrained
   (add-constraint [this f]
                   (DirectedGraph.
-                    nodes-set
-                    nodes-map
-                    edges-map
-                    node-id-seq
-                    edge-id-seq
-                    relations-map
-                    (fn [graph k] (f (constraints-fn graph k) k))
+                    nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
+                    (fn [graph k] (f (constraints-fn graph k) k)) ; <--- CHANGES
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
-                       nodes-set
-                       nodes-map
-                       edges-map
-                       node-id-seq
-                       edge-id-seq
-                       relations-map
-                       (fn [graph k] graph)
+                       nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
+                       (fn [graph k] graph) ; <--- CHANGES
                        metadata))
   (verify-constraints [this] "NOT YET IMPLEMENTED")
   
   ILookup
-    (valAt [this k]
-           (or (get-edge this k) (get-node this k)))
-    (valAt [this k not-found]
-           (if (contains? this k)
-               (get this k)
-               not-found))
+  (valAt [this k]
+         (or (get-edge this k) (get-node this k)))
+  (valAt [this k not-found]
+         (if (contains? this k)
+             (get this k)
+             not-found))
   
   Associative
-    (containsKey [this k]
-                 (or (edge? this k)
-                     (node? this k)))
-    (entryAt [this k]
-             (when (contains? this k)
-                   (clojure.lang.MapEntry. k (get this k))))
+  (containsKey [this k]
+               (or (edge? this k)
+                   (node? this k)))
+  (entryAt [this k]
+           (when (contains? this k)
+                 (clojure.lang.MapEntry. k (get this k))))
   
   IMeta
-    (meta [this] metadata)
-    
+  (meta [this] metadata)
+  
   IObj
-    (withMeta [this new-meta]
-              (DirectedGraph.
-                nodes-set
-                nodes-map
-                edges-map
-                node-id-seq
-                edge-id-seq
-                relations-map
-                constraints-fn
-                new-meta)))
+  (withMeta [this new-meta]
+            (DirectedGraph.
+              nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
+              new-meta))) ; <--- CHANGES
 
 (defn digraph []
   (DirectedGraph.
