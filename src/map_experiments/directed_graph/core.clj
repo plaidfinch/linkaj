@@ -67,7 +67,7 @@
              (apply intersection
                     (for [[a vs] query]
                          (if (relation-in? this a)
-                             (apply union
+                             (apply (comp set union)
                                     (for [v vs]
                                          (map #(attr-get
                                                  edges-map % (opposite relations-map a))
