@@ -74,7 +74,7 @@
   IMeta (meta [this] metadata)
   Object (toString [this] (str (get nodes-map id)))
   MapEquivalence)
-  
+
 (defn graph-node [nodes-map id]
   (GraphNode. nil id nodes-map))
 
@@ -111,12 +111,12 @@
                                   (apply union
                                          (for [v vs]
                                               (keys-with nodes-map a v)))))))))
-  (node? [this o]
-         (and (instance? GraphNode o)
-              (= nodes-map (.nodes-map ^GraphNode o))
-              (contains? nodes-set (id o))))
+  (node-in? [this o]
+            (and (instance? GraphNode o)
+                 (= nodes-map (.nodes-map ^GraphNode o))
+                 (contains? nodes-set (id o))))
   (get-node [this n]
-            (if (node? this n)
+            (if (node-in? this n)
                 (graph-node nodes-map (id n))))
   (add-node [this attributes]
             (if (or (key-overlap? attributes relations-map)
@@ -140,7 +140,7 @@
                          (disj nodes-set node-key)
                          (dissoc nodes-map node-key)
                          (apply dissoc edges-map edges-to-remove)
-                         (if (node? this n)
+                         (if (node-in? this n)
                              (cons node-key node-id-seq)
                              node-id-seq)
                          (concat edges-to-remove edge-id-seq)
@@ -151,7 +151,7 @@
                                  (key-overlap? attributes (inverse relations-map)))
                              (throw (IllegalArgumentException.
                                       "Attributes may not be existing relations"))
-                             (not (node? this n))
+                             (not (node-in? this n))
                              (throw (IllegalArgumentException.
                                       "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
                              :else true)
@@ -182,8 +182,8 @@
                          (apply union
                                 (for [v vs]
                                      (keys-with edges-map a v)))))))
-  (edge? [this o]
-         (contains? edges-map o))
+  (edge-in? [this o]
+            (contains? edges-map o))
   (get-edge [this edge-key]
             (let [e-m (get edges-map edge-key)
                   rels (select-keys e-m (mapcat identity relations-map))]
@@ -198,8 +198,8 @@
                               (cond (not (= r1 (opposite relations-map r2)))
                                     (throw (IllegalArgumentException.
                                              "Relations for an edge must be opposites"))
-                                    (not (and (node? this (relations r1))
-                                              (node? this (relations r2))))
+                                    (not (and (node-in? this (relations r1))
+                                              (node-in? this (relations r2))))
                                     (throw (IllegalArgumentException.
                                              "Edges must connect existing nodes"))
                                     :else true))))
@@ -217,13 +217,13 @@
                     nodes-set nodes-map
                     (dissoc edges-map edge-key)
                     node-id-seq
-                    (if (edge? this edge-key)
+                    (if (edge-in? this edge-key)
                         (cons edge-key edge-id-seq)
                         edge-id-seq)
                     relations-map constraints-fn metadata)))
   (assoc-edge [this edge-key attributes]
               ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
-              (cond (not (edge? this edge-key)) this
+              (cond (not (edge-in? this edge-key)) this
                     (let [[relations rest-attrs]
                           (parse-relations attributes relations-map)
                           [r1 r2] (keys relations)]
@@ -233,7 +233,7 @@
                                                       (opposite relations-map r1)))
                                        (throw (IllegalArgumentException.
                                                 "The type of relation for an edge may not be altered."))
-                                       (not (node? this (relations r1)))
+                                       (not (node-in? this (relations r1)))
                                        (throw (IllegalArgumentException.
                                                 "Edges must connect existing nodes"))
                                        :else true)
@@ -242,18 +242,18 @@
                                                           (opposite relations-map r1))))
                                        (throw (IllegalArgumentException.
                                                 "The type of relation for an edge may not be altered."))
-                                       (not (and (node? this (relations r1))
-                                                 (node? this (relations r2))))
+                                       (not (and (node-in? this (relations r1))
+                                                 (node-in? this (relations r2))))
                                        (throw (IllegalArgumentException.
                                                 "Edges must connect existing nodes"))
                                        :else true)
                                (throw (IllegalArgumentException.
                                         "Edges must be related to exactly 2 nodes"))))
-                      (#(constraints-fn % edge-key)
-                         (DirectedGraph.
-                           nodes-set nodes-map
-                           (assoc edges-map edge-key attributes)
-                           node-id-seq edge-id-seq relations-map constraints-fn metadata))))
+                    (#(constraints-fn % edge-key)
+                       (DirectedGraph.
+                         nodes-set nodes-map
+                         (assoc edges-map edge-key attributes)
+                         node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -341,8 +341,8 @@
   
   IPersistentMap
   (assoc [this k attributes]
-         (cond (node? this k) (assoc-node this k attributes)
-               (edge? this k) (assoc-edge this k attributes)
+         (cond (node-in? this k) (assoc-node this k attributes)
+               (edge-in? this k) (assoc-edge this k attributes)
                :else this))
   
   Seqable
@@ -353,8 +353,8 @@
   
   Associative
   (containsKey [this k]
-               (or (edge? this k)
-                   (node? this k)))
+               (or (edge-in? this k)
+                   (node-in? this k)))
   (entryAt [this k]
            (when (contains? this k)
                  (clojure.lang.MapEntry. k (get this k))))
