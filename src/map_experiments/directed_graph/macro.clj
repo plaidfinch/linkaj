@@ -57,4 +57,4 @@
             `(let [~let-symb ~x] ; avoid re-computing operations using let statement
                   ~(graph-thread-insert form let-symb)))
        (list form x)))
-  ([x form & more] `(g-> (g-> ~x ~form) ~@more)))
+  ([x form & more] `(-#> (-#> ~x ~form) ~@more)))
