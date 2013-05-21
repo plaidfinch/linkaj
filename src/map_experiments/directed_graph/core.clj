@@ -6,7 +6,7 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
-(declare edges-touching)
+(declare edges-touching starting-node-seq starting-edge-seq)
 
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
@@ -45,6 +45,39 @@
          rest-attrs (apply dissoc attributes (keys relations))]
         [relations rest-attrs])))
 
+; GraphNodes are ephemeral maps which contain a hidden id. They are emitted from node queries and their keys/values are looked up lazily, which means that one can efficiently map over a set of GraphNodes without the program having to look up every value in each node.
+
+(deftype GraphNode [metadata id nodes-map]
+  IComponent
+  (id [this] id)
+  IPersistentMap
+  (assoc [this k v] (with-meta (assoc (get nodes-map id) k v) metadata))
+  (without [this k] (with-meta (dissoc (get nodes-map id) k)) metadata)
+  IPersistentCollection
+  (cons [this x] (with-meta (conj (get nodes-map id) x)) metadata)
+  (equiv [this o]
+         (and (isa? (class o) GraphNode)
+              (= id (.id ^GraphNode o))
+              (= nodes-map (.nodes-map ^GraphNode o))))
+  (empty [this] (with-meta {} metadata))
+  IObj (withMeta [this new-meta] (GraphNode. new-meta id nodes-map))
+  Associative
+  (containsKey [this k] (if (attr-get nodes-map id k) true false))
+  (entryAt [this k]
+           (when (contains? this k)
+                 (clojure.lang.MapEntry. k (attr-get nodes-map id k))))
+  ILookup
+  (valAt [this k] (attr-get nodes-map id k))
+  (valAt [this k not-found] (attr-get nodes-map id k not-found))
+  Seqable (seq [this] (seq (get nodes-map id)))
+  IFn (invoke [this k] (get this k))
+  IMeta (meta [this] metadata)
+  Object (toString [this] (str (get nodes-map id)))
+  MapEquivalence)
+  
+(defn graph-node [nodes-map id]
+  (GraphNode. nil id nodes-map))
+
 ; The type definition itself!
 
 (deftype DirectedGraph [nodes-set
@@ -60,71 +93,78 @@
   
   ; Methods acting on nodes:
   (nodes [this]
-         (when (< 0 (count nodes-set)) nodes-set))
+         (map (partial graph-node nodes-map)
+              (when (< 0 (count nodes-set)) nodes-set)))
   (nodes [this query]
-         (if (not (seq query))
-             (nodes this)
-             (apply intersection
-                    (for [[a vs] query]
-                         (if (relation-in? this a)
-                             (apply (comp set union)
-                                    (for [v vs]
-                                         (map #(attr-get
-                                                 edges-map % (opposite relations-map a))
-                                              (keys-with edges-map a v))))
-                             (apply union
-                                    (for [v vs]
-                                         (keys-with nodes-map a v))))))))
+         (map (partial graph-node nodes-map)
+              (if (not (seq query))
+                  (nodes this)
+                  (apply intersection
+                         (for [[a vs] query]
+                              (if (relation-in? this a)
+                                  (apply (comp set union)
+                                         (for [v vs]
+                                              (map #(attr-get
+                                                      edges-map %
+                                                      (opposite relations-map a))
+                                                   (keys-with edges-map a (id v)))))
+                                  (apply union
+                                         (for [v vs]
+                                              (keys-with nodes-map a v)))))))))
   (node? [this o]
-         (contains? nodes-set o))
-  (get-node [this node-key]
-            (if (node? this node-key)
-                (if-let [return (get nodes-map node-key)]
-                        return
-                        {})))
+         (and (instance? GraphNode o)
+              (= nodes-map (.nodes-map ^GraphNode o))
+              (contains? nodes-set (id o))))
+  (get-node [this n]
+            (if (node? this n)
+                (graph-node nodes-map (id n))))
   (add-node [this attributes]
             (if (or (key-overlap? attributes relations-map)
                     (key-overlap? attributes (inverse relations-map)))
                 (throw (IllegalArgumentException.
                          "Attributes may not be identical to existing relations"))
-                (let [node-key (first node-id-seq)]
-                     (#(constraints-fn % node-key)
+                (let [node-key (first node-id-seq)
+                      new-nodes-map (assoc nodes-map node-key attributes)]
+                     (#(constraints-fn % (graph-node node-key new-nodes-map))
                         (DirectedGraph.
                           (conj nodes-set node-key)
-                          (assoc nodes-map node-key attributes)
+                          new-nodes-map
                           edges-map
                           (rest node-id-seq)
                           edge-id-seq relations-map constraints-fn metadata)))))
-  (remove-node [this node-key]
-               (let [edges-to-remove (edges-touching this node-key)]
-                    (#(constraints-fn % node-key)
+  (remove-node [this n]
+               (let [node-key (id n)
+                     edges-to-remove (edges-touching this n)]
+                    (#(constraints-fn % n)
                        (DirectedGraph.
                          (disj nodes-set node-key)
                          (dissoc nodes-map node-key)
                          (apply dissoc edges-map edges-to-remove)
-                         (if (node? this node-key)
+                         (if (node? this n)
                              (cons node-key node-id-seq)
                              node-id-seq)
                          (concat edges-to-remove edge-id-seq)
                          relations-map constraints-fn metadata))))
-  (assoc-node [this node-key attributes]
-              (if (cond (or (key-overlap? attributes relations-map)
-                            (key-overlap? attributes (inverse relations-map)))
-                        (throw (IllegalArgumentException.
-                                 "Attributes may not be existing relations"))
-                        (not (node? this node-key))
-                        (throw (IllegalArgumentException.
-                                 "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
-                        :else true)
-                  (#(constraints-fn % node-key)
-                     (DirectedGraph.
-                       nodes-set
-                       (assoc nodes-map node-key attributes)
-                       edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
-  (dissoc-node [this node-key attribute-keys]
-               (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
+  (assoc-node [this n attributes]
+              (let [node-key (id n)]
+                   (if (cond (or (key-overlap? attributes relations-map)
+                                 (key-overlap? attributes (inverse relations-map)))
+                             (throw (IllegalArgumentException.
+                                      "Attributes may not be existing relations"))
+                             (not (node? this n))
+                             (throw (IllegalArgumentException.
+                                      "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
+                             :else true)
+                       (#(constraints-fn % n)
+                          (DirectedGraph.
+                            nodes-set
+                            (assoc nodes-map node-key attributes)
+                            edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+  (dissoc-node [this n attribute-keys]
+               (let [node-key (id n)
+                     new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                            nodes-map attribute-keys)]
-                    (#(constraints-fn % node-key)
+                    (#(constraints-fn % n)
                        (DirectedGraph.
                          nodes-set
                          new-nodes-map
@@ -145,7 +185,9 @@
   (edge? [this o]
          (contains? edges-map o))
   (get-edge [this edge-key]
-            (get edges-map edge-key))
+            (let [e-m (get edges-map edge-key)
+                  rels (select-keys e-m (mapcat identity relations-map))]
+                 (into e-m (map (juxt key #(get-node this (val %))) rels))))
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
             (if (let [[relations rest-attrs] (parse-relations attributes relations-map)]
@@ -277,6 +319,38 @@
              (get this k)
              not-found))
   
+  IPersistentCollection
+  (equiv [this o] 
+         (or (and (isa? (class o) DirectedGraph)
+                  (= nodes-set      (.nodes-set      ^DirectedGraph o))
+                  (= nodes-map      (.nodes-map      ^DirectedGraph o))
+                  (= edges-map      (.edges-map      ^DirectedGraph o))
+                  (= node-id-seq    (.node-id-seq    ^DirectedGraph o))
+                  (= edge-id-seq    (.edge-id-seq    ^DirectedGraph o))
+                  (= relations-map  (.relations-map  ^DirectedGraph o)))))
+  (empty [this]
+         (DirectedGraph.
+           (empty nodes-set)
+           (empty nodes-map)
+           (empty edges-map)
+           (starting-node-seq)
+           (starting-edge-seq)
+           relations-map
+           constraints-fn
+           metadata))
+  
+  IPersistentMap
+  (assoc [this k attributes]
+         (cond (node? this k) (assoc-node this k attributes)
+               (edge? this k) (assoc-edge this k attributes)
+               :else this))
+  
+  Seqable
+  (seq [this]
+       (seq {:relations relations-map
+             :nodes (get-nodes this (nodes this))
+             :edges (get-edges this (edges this))}))
+  
   Associative
   (containsKey [this k]
                (or (edge? this k)
@@ -284,6 +358,10 @@
   (entryAt [this k]
            (when (contains? this k)
                  (clojure.lang.MapEntry. k (get this k))))
+  
+  Object
+  (toString [this]
+            (str (into {} (seq this))))
   
   IMeta
   (meta [this] metadata)
@@ -294,13 +372,20 @@
               nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
               new-meta)))
 
+; all node keys are even numbers
+(defn- starting-node-seq []
+  (iterate (comp inc inc) 0))
+; all edge keys are odd numbers
+(defn- starting-edge-seq []
+  (iterate (comp inc inc) 1))
+
 (defn digraph
   ([] (DirectedGraph.
         (hash-set)
         (attr-map)
         (attr-map)
-        (iterate (comp inc inc) 0) ; all node keys are even numbers
-        (iterate (comp inc inc) 1) ; all edge keys are odd numbers
+        (starting-node-seq)
+        (starting-edge-seq)
         (bijection)
         (fn [graph k] graph) ; the initial constraint does nothing
         (hash-map)))
@@ -323,37 +408,27 @@
 
 ; Plural operators for nodes:
 
-(defn get-nodes
-  "Gets the values of all node keys given from the graph."
-  ([graph node-keys]
-   (map (partial get-node graph) (nodes graph))))
-
 (defn add-nodes
   "Adds all possible nodes matching attributes (format like query) to the graph."
   ([graph attributes]
    (reduce add-node graph (map-cross attributes))))
 
 (defn remove-nodes
-  "Removes all nodes in node-keys from the graph."
-  ([graph node-keys attributes]
-   (reduce remove-node graph node-keys)))
+  "Removes all nodes in ns from the graph."
+  ([graph ns attributes]
+   (reduce remove-node graph ns)))
 
 (defn assoc-nodes
-  "Associates all nodes in node-keys with the attributes."
-  ([graph node-keys attributes]
-   (reduce #(assoc-node %1 %2 attributes) graph node-keys)))
+  "Associates all nodes in ns with the attributes."
+  ([graph ns attributes]
+   (reduce #(assoc-node %1 %2 attributes) graph ns)))
 
 (defn dissoc-nodes
-  "Dissociates all nodes in node-keys from the attribute-keys."
-  ([graph node-keys attribute-keys]
-   (reduce #(dissoc-node %1 %2 attribute-keys) graph node-keys)))
+  "Dissociates all nodes in ns from the attribute-keys."
+  ([graph ns attribute-keys]
+   (reduce #(dissoc-node %1 %2 attribute-keys) graph ns)))
 
 ; Plural operators for edges:
-
-(defn get-edges
-  "Gets the values of all node keys given from the graph."
-  ([graph node-keys]
-   (map (partial get-edge graph) (edges graph))))
 
 (defn add-edges
   "Adds all possible nodes matching attributes (format like query) to the graph."
@@ -379,14 +454,19 @@
 
 (defn edges-touching
   "Finds all edges which are connected by any relation to a particular node."
-  ([graph node-key]
-   (mapcat #(g-> graph (edges {% [node-key]}))
+  ([graph n]
+   (mapcat #(g-> graph (edges {% [n]}))
            (mapcat identity (relations graph)))))
 
 (defn get-all
   "Gets every node or edge (usually all one or the other) in a sequence of keys."
   ([graph ks]
    (map (partial get graph) ks)))
+
+(defn assoc-all
+  "Associates every item (edge or node) with the attributes."
+  ([graph ks attributes]
+   (reduce #(assoc %1 %2 attributes) graph ks)))
 
 (defn relate
   "Creates an edge between n1 and n2 related to n1 by rel and to n2 by its opposite. More succinct in some cases than add-edge. Gives the edge attributes, if any."
