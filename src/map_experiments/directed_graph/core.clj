@@ -275,18 +275,21 @@
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
             (let [[relations rest-attrs] (parse-relations attributes relations-map)]
-                 (if (if (not= 2 (count relations))
-                         (throw (IllegalArgumentException.
-                                  "An edge must have relations to exactly two nodes"))
-                         (let [[r1 r2] (keys relations)]
-                              (cond (not (= r1 (opposite relations-map r2)))
-                                    (throw (IllegalArgumentException.
-                                             "Relations for an edge must be opposites"))
-                                    (not (and (node-in? this (relations r1))
-                                              (node-in? this (relations r2))))
-                                    (throw (IllegalArgumentException.
-                                             "Edges must connect existing nodes"))
-                                    :else true)))
+                 (if (cond (< (count relations) 2)
+                           (throw (IllegalArgumentException.
+                                    "An edge cannot be created without a relation to exactly 2 existing nodes"))
+                           (= (count relations) 2)
+                           (let [[r1 r2] (keys relations)]
+                                (cond (not (= r1 (opposite relations-map r2)))
+                                      (throw (IllegalArgumentException.
+                                               "Relations for edges must be opposites"))
+                                      (not (and (node-in? this (relations r1))
+                                                (node-in? this (relations r2))))
+                                      (throw (IllegalArgumentException.
+                                               "Edges must connect existing nodes"))
+                                      :else true))
+                           :else (throw (IllegalArgumentException.
+                                          "An edge cannot have relations to greater than two nodes")))
                      (let [edge-key
                            (first edge-id-seq)
                            new-edges-map
