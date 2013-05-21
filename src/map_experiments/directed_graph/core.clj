@@ -187,20 +187,24 @@
                  ;(= this (.graph ^GraphNode o))
                  (contains? nodes-set (id o))))
   (add-node [this attributes]
-            (if (or (key-overlap? attributes relations-map)
+            (cond (or (key-overlap? attributes relations-map)
                     (key-overlap? attributes (inverse relations-map)))
-                (throw (IllegalArgumentException.
+                  (throw (IllegalArgumentException.
                          "Attributes may not be identical to existing relations"))
-                (let [node-key (first node-id-seq)
-                      new-nodes-map (assoc nodes-map node-key attributes)]
-                     (#(constraints-fn
-                         this % (graph-node % new-nodes-map node-key))
-                        (DirectedGraph.
-                          (conj nodes-set node-key)
-                          new-nodes-map
-                          edges-map
-                          (rest node-id-seq)
-                          edge-id-seq relations-map constraints-fn metadata)))))
+                  (not (seq node-id-seq))
+                  (throw (IllegalStateException.
+                           "Empty internal node id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
+                  :else
+                  (let [node-key (first node-id-seq)
+                        new-nodes-map (assoc nodes-map node-key attributes)]
+                       (#(constraints-fn
+                           this % (graph-node % new-nodes-map node-key))
+                          (DirectedGraph.
+                            (conj nodes-set node-key)
+                            new-nodes-map
+                            edges-map
+                            (rest node-id-seq)
+                            edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this n]
                (if (not (node-in? this n))
                    (throw (IllegalArgumentException.
@@ -228,24 +232,24 @@
                            "Cannot assoc to node whose origin is in another graph."))
                   (let [node-key (id n)
                         new-nodes-map (assoc nodes-map node-key attributes)]
-                       (if (cond (or (key-overlap? attributes relations-map)
-                                     (key-overlap? attributes (inverse relations-map)))
-                                 (throw (IllegalArgumentException.
-                                          "Attributes may not be existing relations"))
-                                 (not (node-in? this n))
-                                 (throw (IllegalArgumentException.
-                                          "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
-                                 :else true)
-                           (#(constraints-fn
-                               this % (graph-node % new-nodes-map node-key))
-                              (DirectedGraph.
-                                nodes-set
-                                new-nodes-map
-                                edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
+                       (cond (or (key-overlap? attributes relations-map)
+                                 (key-overlap? attributes (inverse relations-map)))
+                             (throw (IllegalArgumentException.
+                                      "Attributes may not be existing relations"))
+                             (not (node-in? this n))
+                             (throw (IllegalArgumentException.
+                                      "Node must exist before assoc-ing onto it; use add-node to create a new node with attributes"))
+                             :else
+                             (#(constraints-fn
+                                 this % (graph-node % new-nodes-map node-key))
+                                (DirectedGraph.
+                                  nodes-set
+                                  new-nodes-map
+                                  edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
   (dissoc-node [this n attribute-keys]
                (if (not (node-in? this n))
                    (throw (IllegalArgumentException.
-                            "Cannot dissoc from node with origin is in another graph."))
+                            "Cannot dissoc from node with origin in another graph."))
                    (let [node-key (id n)
                          new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                                nodes-map attribute-keys)]
@@ -284,7 +288,10 @@
   (add-edge [this attributes]
             ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
             (let [[relations rest-attrs] (parse-relations attributes relations-map)]
-                 (if (cond (< (count relations) 2)
+                 (if (cond (not (seq edge-id-seq))
+                           (throw (IllegalStateException.
+                                    "Empty internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
+                           (< (count relations) 2)
                            (throw (IllegalArgumentException.
                                     "An edge cannot be created without a relation to exactly 2 existing nodes"))
                            (= (count relations) 2)
@@ -314,7 +321,7 @@
                                node-id-seq
                                (rest edge-id-seq)
                                relations-map constraints-fn metadata))))))
-            (remove-edge [this e]
+  (remove-edge [this e]
                (if (not (edge-in? this e))
                    (throw (IllegalArgumentException.
                             "Cannot remove edge with origin in another graph."))
