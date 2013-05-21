@@ -373,3 +373,8 @@
   ([graph node-key]
    (mapcat #(g-> graph (edges {% [node-key]}))
            (mapcat identity (relations graph)))))
+
+(defn get-all
+  "Gets every node or edge (usually all one or the other) in a sequence of keys."
+  ([graph ks]
+   (map (partial get graph) ks)))
