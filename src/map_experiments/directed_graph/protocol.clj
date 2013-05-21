@@ -2,7 +2,7 @@
 
 (defprotocol IComponent
   "Protocol for a component of a larger data structure."
-  (id [this] "Returns the id of the component"))
+  (id [this] "Returns the id of the component. Do not use this function in client code; it is meant to be for implementation-specific internal use only."))
 
 (defprotocol Relational
   "Protocol for an object with relations and opposites which can be added or removed." 
