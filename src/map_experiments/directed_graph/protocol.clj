@@ -47,7 +47,9 @@
   (remove-edge [graph edge-key]
     "Removes edge-key from the graph.")
   (assoc-edge [graph edge-key attributes]
-    "Associates edge-key with attributes. This may change relations if relations are used in attributes.")
+    "Associates edge-key with attributes. This cannot change relations.")
+  (move-edge [graph edge-key relations]
+    "Moves edge to have relations. This cannot change which relations there are, only the nodes to which the edge is related.")
   (dissoc-edge [graph edge-key attribute-keys]
     "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."))
 
