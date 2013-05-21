@@ -62,11 +62,19 @@
   (nodes [this]
          (when (< 0 (count nodes-set)) nodes-set))
   (nodes [this query]
-         (if (seq query)
+         (if (not (seq query))
+             (nodes this)
              (apply intersection
                     (for [[a vs] query]
-                         (apply union (for [v vs] (keys-with nodes-map a v)))))
-             (nodes this)))
+                         (if (relation-in? this a)
+                             (apply union
+                                    (for [v vs]
+                                         (map #(attr-get
+                                                 edges-map % (opposite relations-map a))
+                                              (keys-with edges-map a v))))
+                             (apply union
+                                    (for [v vs]
+                                         (keys-with nodes-map a v))))))))
   (node? [this o]
          (contains? nodes-set o))
   (get-node [this node-key]
@@ -88,16 +96,17 @@
                           (rest node-id-seq)
                           edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this node-key]
-               (#(constraints-fn % node-key)
-                  (DirectedGraph.
-                    (disj nodes-set node-key)
-                    (dissoc nodes-map node-key)
-                    (apply dissoc edges-map
-                           (edges-touching this node-key))
-                    (if (node? this node-key)
-                        (cons node-key node-id-seq)
-                        node-id-seq)
-                    edge-id-seq relations-map constraints-fn metadata)))
+               (let [edges-to-remove (edges-touching this node-key)]
+                    (#(constraints-fn % node-key)
+                       (DirectedGraph.
+                         (disj nodes-set node-key)
+                         (dissoc nodes-map node-key)
+                         (apply dissoc edges-map edges-to-remove)
+                         (if (node? this node-key)
+                             (cons node-key node-id-seq)
+                             node-id-seq)
+                         (concat edges-to-remove edge-id-seq)
+                         relations-map constraints-fn metadata))))
   (assoc-node [this node-key attributes]
               (if (cond (or (key-overlap? attributes relations-map)
                             (key-overlap? attributes (inverse relations-map)))
@@ -226,11 +235,12 @@
   Relational
   (relations [this] relations-map)
   (related-in? [this r1 r2]
-               (and (or (and (contains? relations-map r1)
-                             (contains? (inverse relations-map) r2))
-                        (and (contains? (inverse relations-map) r1)
-                             (contains? relations-map r2)))
+               (and (relation-in? this r1)
+                    (relation-in? this r2)
                     (= r1 (opposite relations-map r2))))
+  (relation-in? [this r]
+                (or (contains? relations-map r)
+                    (contains? (inverse relations-map) r)))
   (add-relation [this r1 r2]
                 (DirectedGraph.
                   nodes-set nodes-map edges-map node-id-seq edge-id-seq
@@ -290,10 +300,10 @@
         (hash-set)
         (attr-map)
         (attr-map)
-        (iterate (comp inc inc) 0)
-        (iterate (comp inc inc) 1)
+        (iterate (comp inc inc) 0) ; all node keys are even numbers
+        (iterate (comp inc inc) 1) ; all edge keys are odd numbers
         (bijection)
-        (fn [graph k] graph)
+        (fn [graph k] graph) ; the initial constraint does nothing
         (hash-map)))
   ([& {:keys [relations constraints]}]
    (reduce add-constraint
@@ -378,3 +388,13 @@
   "Gets every node or edge (usually all one or the other) in a sequence of keys."
   ([graph ks]
    (map (partial get graph) ks)))
+
+(defn relate
+  "Creates an edge between n1 and n2 related to n1 by rel and to n2 by its opposite. More succinct in some cases than add-edge. Gives the edge attributes, if any."
+  ([graph rel n1 n2]
+   (relate graph rel n1 n2 {}))
+  ([graph rel n1 n2 attributes]
+   (g-> graph
+        (add-edge (g-| (assoc attributes
+                              rel n1
+                              (opposite (relations graph) rel) n2))))))

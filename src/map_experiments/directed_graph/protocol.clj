@@ -4,6 +4,7 @@
   "Protocol for an object with relations and opposites which can be added or removed." 
   (relations       [o]       "Returns a bijection between all relations.")
   (related-in?     [o r1 r2] "Tells if two relations are related in the object.")
+  (relation-in?    [o r]     "Tells if something is a relation in the object.")
   (add-relation    [o r1 r2] "Adds the relation r1 & r2 to the object.")
   (remove-relation [o r1 r2] "Removes the specified relation from the object."))
 
