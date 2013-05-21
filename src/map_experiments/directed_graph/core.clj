@@ -205,17 +205,20 @@
                    (let [node-key (id n)
                          edges-to-remove (edges-touching this n)
                          new-nodes-map (dissoc nodes-map node-key)]
-                        (#(constraints-fn
-                            % (graph-node % node-key new-nodes-map))
-                           (DirectedGraph.
-                             (disj nodes-set node-key)
-                             new-nodes-map
-                             (apply dissoc edges-map edges-to-remove)
-                             (if (node-in? this n)
-                                 (cons node-key node-id-seq)
-                                 node-id-seq)
-                             (concat edges-to-remove edge-id-seq)
-                             relations-map constraints-fn metadata)))))
+                        (if (seq edges-to-remove)
+                            (let [new-graph (remove-edges this edges-to-remove)]
+                                 (remove-node new-graph
+                                              (graph-node new-graph nodes-map (id n))))
+                            (#(constraints-fn
+                                % (graph-node % node-key new-nodes-map))
+                               (DirectedGraph.
+                                 (disj nodes-set node-key)
+                                 new-nodes-map
+                                 edges-map
+                                 (if (node-in? this n)
+                                     (cons node-key node-id-seq)
+                                     node-id-seq)
+                                 edge-id-seq relations-map constraints-fn metadata))))))
   (assoc-node [this n attributes]
               (if (not (node-in? this n))
                   (throw (IllegalArgumentException.
@@ -518,7 +521,7 @@
 
 (defn remove-nodes
   "Removes all nodes in ns from the graph."
-  ([graph ns attributes]
+  ([graph ns]
    (reduce remove-node graph ns)))
 
 (defn assoc-nodes
@@ -540,18 +543,18 @@
 
 (defn remove-edges
   "Removes all edges in edge-keys from the graph."
-  ([graph edge-keys attributes]
-   (reduce remove-edge graph edge-keys)))
+  ([graph es]
+   (reduce remove-edge graph es)))
 
 (defn assoc-edges
   "Associates all edges in edge-keys with the attributes."
-  ([graph edge-keys attributes]
-   (reduce #(assoc-edge %1 %2 attributes) graph edge-keys)))
+  ([graph es attributes]
+   (reduce #(assoc-edge %1 %2 attributes) graph es)))
 
 (defn dissoc-edges
   "Dissociates all edges in edge-keys from the attribute-keys."
-  ([graph edge-keys attribute-keys]
-   (reduce #(dissoc-edge %1 %2 attribute-keys) graph edge-keys)))
+  ([graph es attribute-keys]
+   (reduce #(dissoc-edge %1 %2 attribute-keys) graph es)))
 
 ; Other useful operators:
 
