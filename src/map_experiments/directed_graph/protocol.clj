@@ -29,8 +29,6 @@
     "Returns all graph nodes matching the query.")
   (node-in? [graph x]
     "Returns true if x is a node key in the graph.")
-  (get-node [graph n]
-    "Returns a map of all attributes for node n.")
   (add-node [graph attributes]
     "Adds a node with attributes to the graph.")
   (remove-node [graph n]
@@ -45,8 +43,6 @@
     "Returns all graph edges matching the query.")
   (edge-in? [graph x]
     "Returns true if x is an edge in the graph.")
-  (get-edge [graph edge-key]
-    "Returns a map of all attributes for edge-key.")
   (add-edge [graph attributes]
     "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites.")
   (remove-edge [graph edge-key]
