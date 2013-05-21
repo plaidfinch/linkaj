@@ -296,6 +296,10 @@
            (reduce (partial apply add-relation) (digraph) relations)
            constraints)))
 
+; Additional methods for semantic ease...
+
+; Singular selectors for nodes and edges:
+
 (def node
   "For selecting a single node when you know the query is unique."
   (specific nodes))
@@ -303,6 +307,8 @@
 (def edge
   "For selecting a single edge when you know the query is unique."
   (specific edges))
+
+; Plural operators for nodes:
 
 (defn get-nodes
   "Gets the values of all node keys given from the graph."
@@ -328,6 +334,8 @@
   "Dissociates all nodes in node-keys from the attribute-keys."
   ([graph node-keys attribute-keys]
    (reduce #(dissoc-node %1 %2 attribute-keys) graph node-keys)))
+
+; Plural operators for edges:
 
 (defn get-edges
   "Gets the values of all node keys given from the graph."
