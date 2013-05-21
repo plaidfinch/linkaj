@@ -74,28 +74,31 @@
                     (key-overlap? attributes (inverse relations-map)))
                 (throw (IllegalArgumentException.
                          "Attributes may not be identical to existing relations"))
-                (DirectedGraph.
-                  (conj nodes-set (first node-id-seq))
-                  (assoc nodes-map (first node-id-seq) attributes)
-                  edges-map
-                  (rest node-id-seq)
-                  edge-id-seq
-                  relations-map
-                  constraints-fn
-                  metadata)))
+                (let [node-key (first node-id-seq)]
+                     (#(constraints-fn % node-key)
+                        (DirectedGraph.
+                          (conj nodes-set node-key)
+                          (assoc nodes-map node-key attributes)
+                          edges-map
+                          (rest node-id-seq)
+                          edge-id-seq
+                          relations-map
+                          constraints-fn
+                          metadata)))))
   (remove-node [this node-key]
                (assert false "THIS METHOD NEEDS TO BE FIXED: REMOVE CONNECTED EDGES")
-               (DirectedGraph.
-                 (disj nodes-set node-key)
-                 (dissoc nodes-map node-key)
-                 edges-map
-                 (if (node? this node-key)
-                     (cons node-key node-id-seq)
-                     node-id-seq)
-                 edge-id-seq
-                 relations-map
-                 constraints-fn
-                 metadata))
+               (#(constraints-fn % node-key)
+                  (DirectedGraph.
+                    (disj nodes-set node-key)
+                    (dissoc nodes-map node-key)
+                    edges-map
+                    (if (node? this node-key)
+                        (cons node-key node-id-seq)
+                        node-id-seq)
+                    edge-id-seq
+                    relations-map
+                    constraints-fn
+                    metadata)))
   (assoc-node [this node-key attributes]
               (if (cond (or (key-overlap? attributes relations-map)
                             (key-overlap? attributes (inverse relations-map)))
@@ -105,27 +108,29 @@
                         (throw (IllegalArgumentException.
                                  "Node must exist before assoc-ing onto it; to create a new node with attributes, use add-node"))
                         :else true)
-                  (DirectedGraph.
-                    nodes-set
-                    (assoc nodes-map node-key attributes)
-                    edges-map
-                    node-id-seq
-                    edge-id-seq
-                    relations-map
-                    constraints-fn
-                    metadata)))
+                  (#(constraints-fn % node-key)
+                     (DirectedGraph.
+                       nodes-set
+                       (assoc nodes-map node-key attributes)
+                       edges-map
+                       node-id-seq
+                       edge-id-seq
+                       relations-map
+                       constraints-fn
+                       metadata))))
   (dissoc-node [this node-key attribute-keys]
                (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                            nodes-map attribute-keys)]
-                    (DirectedGraph.
-                      nodes-set
-                      new-nodes-map
-                      edges-map
-                      node-id-seq
-                      edge-id-seq
-                      relations-map
-                      constraints-fn
-                      metadata)))
+                    (#(constraints-fn % node-key)
+                       (DirectedGraph.
+                         nodes-set
+                         new-nodes-map
+                         edges-map
+                         node-id-seq
+                         edge-id-seq
+                         relations-map
+                         constraints-fn
+                         metadata))))
   
   ; Methods acting on edges:
   (edges [this]
@@ -156,27 +161,30 @@
                                     (throw (IllegalArgumentException.
                                              "Edges must connect existing nodes"))
                                     :else true))))
-                (DirectedGraph.
-                  nodes-set
-                  nodes-map
-                  (assoc edges-map (first edge-id-seq) attributes)
-                  node-id-seq
-                  (rest edge-id-seq)
-                  relations-map
-                  constraints-fn
-                  metadata)))
+                (let [edge-key (first edge-id-seq)]
+                     (#(constraints-fn % edge-key)
+                        (DirectedGraph.
+                          nodes-set
+                          nodes-map
+                          (assoc edges-map edge-key attributes)
+                          node-id-seq
+                          (rest edge-id-seq)
+                          relations-map
+                          constraints-fn
+                          metadata)))))
   (remove-edge [this edge-key]
-               (DirectedGraph.
-                 nodes-set
-                 nodes-map
-                 (dissoc edges-map edge-key)
-                 node-id-seq
-                 (if (edge? this edge-key)
-                     (cons edge-key edge-id-seq)
-                     edge-id-seq)
-                 relations-map
-                 constraints-fn
-                 metadata))
+               (#(constraints-fn % edge-key)
+                  (DirectedGraph.
+                    nodes-set
+                    nodes-map
+                    (dissoc edges-map edge-key)
+                    node-id-seq
+                    (if (edge? this edge-key)
+                        (cons edge-key edge-id-seq)
+                        edge-id-seq)
+                    relations-map
+                    constraints-fn
+                    metadata)))
   (assoc-edge [this edge-key attributes]
               ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
               (if (let [[relations rest-attrs]
@@ -209,15 +217,16 @@
                                           :else true))
                              (throw (IllegalArgumentException.
                                       "Edges must be related to exactly 2 nodes."))))
-                  (DirectedGraph.
-                    nodes-set
-                    nodes-map
-                    (assoc edges-map edge-key attributes)
-                    node-id-seq
-                    edge-id-seq
-                    relations-map
-                    constraints-fn
-                    metadata)))
+                  (#(constraints-fn % edge-key)
+                     (DirectedGraph.
+                       nodes-set
+                       nodes-map
+                       (assoc edges-map edge-key attributes)
+                       node-id-seq
+                       edge-id-seq
+                       relations-map
+                       constraints-fn
+                       metadata))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
                (let [[relations rest-attrs]
@@ -227,16 +236,17 @@
                     (if (not= 0 (count relations))
                         (throw (IllegalArgumentException.
                                  "An edge cannot be disconnected from a node without being re-connected to another node"))
-                        (DirectedGraph.
-                          nodes-set
-                          nodes-map
-                          (reduce #(attr-dissoc %1 edge-key %2)
-                                  edges-map attribute-keys)
-                          node-id-seq
-                          edge-id-seq
-                          relations-map
-                          constraints-fn
-                          metadata))))
+                        (#(constraints-fn % edge-key)
+                          (DirectedGraph.
+                            nodes-set
+                            nodes-map
+                            (reduce #(attr-dissoc %1 edge-key %2)
+                                    edges-map attribute-keys)
+                            node-id-seq
+                            edge-id-seq
+                            relations-map
+                            constraints-fn
+                            metadata)))))
   
   Relational
   (relations [this] relations-map)
@@ -332,7 +342,7 @@
     (iterate (comp inc inc) 0)
     (iterate (comp inc inc) 1)
     (bijection)
-    (hash-map)
+    (fn [graph k] graph)
     (hash-map)))
 
 (def node
