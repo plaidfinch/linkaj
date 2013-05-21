@@ -208,7 +208,7 @@
                        relations-map)]
                     (if (not= 0 (count relations))
                         (throw (IllegalArgumentException.
-                                 "An edge cannot be disconnected from a node without being re-connected to another node"))
+                                 "An edge cannot be disconnected from a node without being connected to another node"))
                         (#(constraints-fn % edge-key)
                            (DirectedGraph.
                              nodes-set nodes-map
