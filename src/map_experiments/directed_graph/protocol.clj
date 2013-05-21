@@ -27,23 +27,23 @@
   ; Methods acting on nodes:
   (nodes [graph] [graph query]
     "Returns all graph nodes matching the query.")
-  (node? [graph x]
+  (node-in? [graph x]
     "Returns true if x is a node key in the graph.")
-  (get-node [graph node-key]
-    "Returns a map of all attributes for node-key.")
+  (get-node [graph n]
+    "Returns a map of all attributes for node n.")
   (add-node [graph attributes]
     "Adds a node with attributes to the graph.")
-  (remove-node [graph node-key]
-    "Removes node-key from the graph, as well as all edges which are directly connected to this node.")
-  (assoc-node [graph node-key attributes]
-    "Associates node-key with attributes.")
-  (dissoc-node [graph node-key attribute-keys]
-    "Dissociates node-key from attribute-keys.")
+  (remove-node [graph n]
+    "Removes node n from the graph, as well as all edges which are directly connected to this node.")
+  (assoc-node [graph n attributes]
+    "Associates node n with attributes.")
+  (dissoc-node [graph n attribute-keys]
+    "Dissociates node n from attribute-keys.")
   
   ; Methods acting on edges:
   (edges [graph] [graph query]
     "Returns all graph edges matching the query.")
-  (edge? [graph x]
+  (edge-in? [graph x]
     "Returns true if x is an edge in the graph.")
   (get-edge [graph edge-key]
     "Returns a map of all attributes for edge-key.")
