@@ -6,6 +6,8 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
+(declare edges-touching)
+
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
   ([bij x]
@@ -43,6 +45,8 @@
          rest-attrs (apply dissoc attributes (keys relations))]
         [relations rest-attrs])))
 
+; The type definition itself!
+
 (deftype DirectedGraph [nodes-set
                         nodes-map
                         edges-map
@@ -78,21 +82,21 @@
                 (let [node-key (first node-id-seq)]
                      (#(constraints-fn % node-key)
                         (DirectedGraph.
-                          (conj nodes-set node-key)  ; <--- CHANGES
-                          (assoc nodes-map node-key attributes)  ; <--- CHANGES
+                          (conj nodes-set node-key)
+                          (assoc nodes-map node-key attributes)
                           edges-map
-                          (rest node-id-seq)  ; <--- CHANGES
+                          (rest node-id-seq)
                           edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this node-key]
-               (assert false "THIS METHOD NEEDS TO BE FIXED: REMOVE CONNECTED EDGES")
                (#(constraints-fn % node-key)
                   (DirectedGraph.
-                    (disj nodes-set node-key)  ; <--- CHANGES
-                    (dissoc nodes-map node-key)  ; <--- CHANGES
-                    edges-map
-                    (if (node? this node-key)       ;  \
-                        (cons node-key node-id-seq) ;  < --- CHANGES
-                        node-id-seq)                ;  /
+                    (disj nodes-set node-key)
+                    (dissoc nodes-map node-key)
+                    (apply dissoc edges-map
+                           (edges-touching this node-key))
+                    (if (node? this node-key)
+                        (cons node-key node-id-seq)
+                        node-id-seq)
                     edge-id-seq relations-map constraints-fn metadata)))
   (assoc-node [this node-key attributes]
               (if (cond (or (key-overlap? attributes relations-map)
@@ -106,7 +110,7 @@
                   (#(constraints-fn % node-key)
                      (DirectedGraph.
                        nodes-set
-                       (assoc nodes-map node-key attributes)  ; <--- CHANGES
+                       (assoc nodes-map node-key attributes)
                        edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   (dissoc-node [this node-key attribute-keys]
                (let [new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
@@ -114,7 +118,7 @@
                     (#(constraints-fn % node-key)
                        (DirectedGraph.
                          nodes-set
-                         new-nodes-map ; <--- CHANGES
+                         new-nodes-map
                          edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))
   
   ; Methods acting on edges:
@@ -150,19 +154,19 @@
                      (#(constraints-fn % edge-key)
                         (DirectedGraph.
                           nodes-set nodes-map
-                          (assoc edges-map edge-key attributes) ; <--- CHANGES
+                          (assoc edges-map edge-key attributes)
                           node-id-seq
-                          (rest edge-id-seq) ; <--- CHANGES
+                          (rest edge-id-seq)
                           relations-map constraints-fn metadata)))))
   (remove-edge [this edge-key]
                (#(constraints-fn % edge-key)
                   (DirectedGraph.
                     nodes-set nodes-map
-                    (dissoc edges-map edge-key) ; <--- CHANGES
+                    (dissoc edges-map edge-key)
                     node-id-seq
-                    (if (edge? this edge-key)       ;  \ 
-                        (cons edge-key edge-id-seq) ;  < --- CHANGES
-                        edge-id-seq)                ;  /
+                    (if (edge? this edge-key)
+                        (cons edge-key edge-id-seq)
+                        edge-id-seq)
                     relations-map constraints-fn metadata)))
   (assoc-edge [this edge-key attributes]
               ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
@@ -201,7 +205,7 @@
                       (#(constraints-fn % edge-key)
                          (DirectedGraph.
                            nodes-set nodes-map
-                           (assoc edges-map edge-key attributes) ; <--- CHANGES
+                           (assoc edges-map edge-key attributes)
                            node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   (dissoc-edge [this edge-key attribute-keys]
                ; Validate that there are no relations being dissoced
@@ -215,8 +219,8 @@
                         (#(constraints-fn % edge-key)
                            (DirectedGraph.
                              nodes-set nodes-map
-                             (reduce #(attr-dissoc %1 edge-key %2) ; \ <--- CHANGES
-                                     edges-map attribute-keys)     ; /
+                             (reduce #(attr-dissoc %1 edge-key %2)
+                                     edges-map attribute-keys)
                              node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   
   Relational
@@ -230,7 +234,7 @@
   (add-relation [this r1 r2]
                 (DirectedGraph.
                   nodes-set nodes-map edges-map node-id-seq edge-id-seq
-                  (assoc relations-map r1 r2) ; <--- CHANGES
+                  (assoc relations-map r1 r2)
                   constraints-fn metadata))
   (remove-relation [this r1 r2]
                    (if (and (related-in? this r1 r2)
@@ -238,7 +242,7 @@
                             (nil? (keys-with-attr edges-map r2)))
                        (DirectedGraph.
                          nodes-set nodes-map edges-map node-id-seq edge-id-seq
-                         (dissoc (rdissoc relations-map r1) r1) ; <--- CHANGES
+                         (dissoc (rdissoc relations-map r1) r1)
                          constraints-fn metadata)
                        (throw (IllegalArgumentException.
                                 "Relation could not be removed from graph for one of the following reasons: a) the two relations given are not each others' opposites; b) there are existing edges along this relation"))))
@@ -247,12 +251,12 @@
   (add-constraint [this f]
                   (DirectedGraph.
                     nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
-                    (fn [graph k] (f (constraints-fn graph k) k)) ; <--- CHANGES
+                    (fn [graph k] (f (constraints-fn graph k) k))
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
                        nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
-                       (fn [graph k] graph) ; <--- CHANGES
+                       (fn [graph k] graph)
                        metadata))
   (verify-constraints [this] "NOT YET IMPLEMENTED")
   
@@ -279,7 +283,7 @@
   (withMeta [this new-meta]
             (DirectedGraph.
               nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
-              new-meta))) ; <--- CHANGES
+              new-meta)))
 
 (defn digraph
   ([] (DirectedGraph.
@@ -361,3 +365,11 @@
   "Dissociates all edges in edge-keys from the attribute-keys."
   ([graph edge-keys attribute-keys]
    (reduce #(dissoc-edge %1 %2 attribute-keys) graph edge-keys)))
+
+; Other useful operators:
+
+(defn edges-touching
+  "Finds all edges which are connected by any relation to a particular node."
+  ([graph node-key]
+   (mapcat #(g-> graph (edges {% [node-key]}))
+           (mapcat identity (relations graph)))))
