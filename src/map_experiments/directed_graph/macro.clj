@@ -22,7 +22,8 @@
                               (rest form))
           rest-form-stop (rest form)]
          (if (symbol? function)
-             (cond (= (resolve function) (resolve graph-stop-threading-symb))
+             (cond (= function 'quote) form
+                   (= (resolve function) (resolve graph-stop-threading-symb))
                    `(do ~@rest-form-stop)
                    (= (resolve function) (resolve graph-skip-threading-symb))
                    `(do ~@rest-form-skip)
