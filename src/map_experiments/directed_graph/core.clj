@@ -533,7 +533,9 @@
 (defn add-nodes
   "Adds all possible nodes matching attributes (format like query) to the graph."
   ([graph attributes]
-   (reduce add-node graph (map-cross attributes))))
+   (reduce add-node graph (map-cross attributes)))
+  ([graph attributes & more-attr-lists]
+   (reduce add-nodes (add-nodes graph attributes) more-attr-lists)))
 
 (defn remove-nodes
   "Removes all nodes in ns from the graph."
@@ -555,7 +557,9 @@
 (defn add-edges
   "Adds all possible nodes matching attributes (format like query) to the graph."
   ([graph attributes]
-   (reduce add-edge graph (map-cross attributes))))
+   (reduce add-edge graph (map-cross attributes)))
+  ([graph attributes & more-attr-lists]
+   (reduce add-edges (add-edges graph attributes) more-attr-lists)))
 
 (defn remove-edges
   "Removes all edges in edge-keys from the graph."
