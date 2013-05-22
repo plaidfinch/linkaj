@@ -191,10 +191,13 @@
             (cond (or (key-overlap? attributes relations-map)
                     (key-overlap? attributes (inverse relations-map)))
                   (throw (IllegalArgumentException.
-                         "Attributes may not be identical to existing relations"))
+                           "Attributes may not be identical to existing relations"))
                   (not (seq node-id-seq))
                   (throw (IllegalStateException.
                            "Empty internal node id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
+                  (contains? nodes-map (first node-id-seq))
+                  (throw (IllegalStateException.
+                           "Encountered duplicate in internal node id sequence; check custom specifications for this parameter to ensure that sequence specified is non-repeating"))
                   :else
                   (let [node-key (first node-id-seq)
                         new-nodes-map (assoc nodes-map node-key attributes)]
@@ -292,6 +295,9 @@
                  (if (cond (not (seq edge-id-seq))
                            (throw (IllegalStateException.
                                     "Empty internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
+                           (contains? edges-map (first edge-id-seq))
+                           (throw (IllegalStateException.
+                                    "Encountered duplicate in internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is non-repeating"))
                            (< (count relations) 2)
                            (throw (IllegalArgumentException.
                                     "An edge cannot be created without a relation to exactly 2 existing nodes"))
