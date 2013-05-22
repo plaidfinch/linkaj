@@ -124,10 +124,7 @@
          (if (contains? this k)
              (let [v (attr-get edges-map id k)]
                   (if (relation-in? graph k)
-                      (if (node-in? graph (graph-node graph nodes-map v))
-                          (graph-node graph nodes-map v)
-                          (throw (IllegalStateException.
-                                   "Illegal internal state in graph edge: stored node does not match stored graph!")))
+                      (graph-node graph nodes-map v)
                       v))
              not-found))
   Seqable
