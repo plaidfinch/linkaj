@@ -604,3 +604,14 @@
         (add-edge (-#| (assoc attributes
                               rel n1
                               (opposite (relations graph) rel) n2))))))
+
+(defn add-edge-path
+  "Adds edges between each adjacent node given, along the relation given."
+  ([graph rels ns]
+   (add-edge-path graph rels {} ns))
+  ([graph rels attributes ns]
+   {:pre (= 2 (count rels))}
+   (reduce #(add-edge %1 (merge attributes {(first rels)  (first %2)
+                                            (second rels) (second %2)}))
+           graph
+           (partition 2 1 ns))))
