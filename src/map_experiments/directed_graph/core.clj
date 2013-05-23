@@ -608,7 +608,7 @@
 (defn add-path
   "Adds edges between each adjacent node given, along the relation given."
   ([graph rels ns]
-   (add-edge-path graph rels {} ns))
+   (add-path graph rels {} ns))
   ([graph rels attributes ns]
    {:pre (= 2 (count rels))}
    (reduce #(add-edge %1 (merge attributes {(first rels)  (first %2)
@@ -619,7 +619,7 @@
 (defn add-cycle
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
   ([graph rels ns]
-   (add-edge-path graph rels {} ns))
+   (add-cycle graph rels {} ns))
   ([graph rels attributes ns]
    {:pre (= 2 (count rels))}
    (reduce #(add-edge %1 (merge attributes {(first rels)  (first %2)
