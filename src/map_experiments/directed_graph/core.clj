@@ -10,7 +10,7 @@
 
 ; Some useful functions which might be of use to people doing other things:
 
-(defn opposite 
+(defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
   ([bij x]
    (opposite bij x nil))
