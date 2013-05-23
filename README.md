@@ -19,7 +19,7 @@ Persistent associative datatypes with more features than Clojure's built-in maps
 
 * The ``IDirectedGraph``, ``Relational``, ``Constrained``, and ``IComponent`` protocols describe the functionality of a directed graph data structure, where every node and edge can have arbitrary attributes and values associated with it. This is perhaps not the fastest directed graph implementation out there, but it has a compelling syntax for manipulation, and is designed with the aim of encouraging more complex operations to be built onto it.
 
-More documentation about directed graphs is forthcoming, but here's a sample of how it looks like to manipulate one:
+More documentation about directed graphs is forthcoming, but here are some samples of how it looks like to manipulate one:
 
 ```
 (-#> (digraph :relations [[:from :to]])
@@ -28,6 +28,21 @@ More documentation about directed graphs is forthcoming, but here's a sample of 
                 {:foo true :bar 500}
                 (-#- (sort-by :id (nodes))))
      (n-away-from :from 2 (nodes {:id ['A]})))
+
+;=> ({:color :red, :id C})
+```
+
+```
+(-#> (digraph :relations [[:parent :child]])
+     (add-nodes {:id [1 2 3]})
+     (add-edges {:parent (nodes {:id [2]})
+                 :child  (nodes {:id [1 3]})})
+     (assoc-edge (edge {:parent [(node {:id [2]})]
+                        :child  [(node {:id [3]})]})
+                 {:foo true})
+     edges)
+
+;=> ({:parent {:id 2}, :child {:id 1}} {:parent {:id 2}, :foo true, :child {:id 3}})
 ```
 
 ## License
