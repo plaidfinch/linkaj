@@ -2,16 +2,16 @@
 
 ; Special threading macro graph-> to allow automatic context for queries and threading through multiple operations to boot.
 
+; Quasi-macros used for changing threading inside the -#> form:
+(declare -#| -#-)
+(def stop-threading-symb
+  (symbol "-#|"))
+(def skip-threading-symb
+  (symbol "-#-"))
+
 ; Graph-thread-insert does the work of the traversal for the graph-> macro.
 (defmulti graph-thread-insert
   (fn [form symb] (class form)))
-
-; This is used to stop graph threading inside its application
-(declare -#| -#-)
-(def graph-stop-threading-symb
-  (symbol "-#|"))
-(def graph-skip-threading-symb
-  (symbol "-#-"))
 
 ; Any list beginning with a symbol that resolves to something in the core or protocol namespace is prefixed with the threaded symbol.
 (defmethod graph-thread-insert clojure.lang.PersistentList [form symb]
@@ -23,9 +23,9 @@
           rest-form-stop (rest form)]
          (if (symbol? function)
              (cond (= function 'quote) form
-                   (= (resolve function) (resolve graph-stop-threading-symb))
+                   (= (resolve function) (ns-resolve *ns* stop-threading-symb))
                    `(do ~@rest-form-stop)
-                   (= (resolve function) (resolve graph-skip-threading-symb))
+                   (= (resolve function) (ns-resolve *ns* skip-threading-symb))
                    `(do ~@rest-form-skip)
                    :else
                    (cons (first form)
