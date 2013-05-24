@@ -21,7 +21,7 @@ Persistent associative datatypes with more features than Clojure's built-in maps
 
 More documentation about directed graphs is forthcoming, but here are some samples of how it looks like to manipulate one:
 
-```
+```clojure
 (-#> (digraph :relations [[:from :to]])
      (add-nodes {:id ['A 'B 'C 'D] :color [:red]})
      (add-cycle [:from :to]
@@ -32,7 +32,7 @@ More documentation about directed graphs is forthcoming, but here are some sampl
 ;=> ({:color :red, :id C})
 ```
 
-```
+```clojure
 (-#> (digraph :relations [[:parent :child]])
      (add-nodes {:id [1 2 3]})
      (add-edges {:parent (nodes {:id [2]})
