@@ -283,12 +283,13 @@
                                          (for [v vs]
                                               (cond (node? v)
                                                     (keys-with edges-map a (id v))
-                                                    ; EVENTUALLY EDGES WILL BE SUPPORTED HERE
-                                                    ; (edge? v)
-                                                    ; ...
+                                                    (edge? v)
+                                                    (keys-with
+                                                      edges-map a
+                                                      (attr-get edges-map (id v) (opposite relations-map a)))
                                                     :else
                                                     (throw (IllegalArgumentException.
-                                                             "Nodes can only be related to nodes, and by extension, to edges.")))))
+                                                             "Edges can only be related to nodes, and by extension, to edges.")))))
                                   (apply (comp set union)
                                          (for [v vs]
                                               (keys-with edges-map a v)))))))))
