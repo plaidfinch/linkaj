@@ -419,17 +419,7 @@
        (if (not (seq (rest result)))
            (first result)
            (throw (IllegalArgumentException.
-                    (str "More than one value present in collection returned from 'specific' function. Collection returned: ("
-                         (apply str (interpose " " ((if *print-length*
-                                                        (partial take *print-length*)
-                                                        identity)
-                                                    result)))
-                         (if (seq ((if *print-length*
-                                       (partial drop *print-length*)
-                                       (constantly nil))
-                                   result))
-                             " ...")
-                         ")"))))))))
+                    (str "Violation of 'specific' constraint on function <" function ">. The function, when given argument(s) " args ", returned a collection with more than one element: " (with-out-str (pr result)) "."))))))))
 
 (def specific-key
   "Returns nil if no keys match, a key if one key matches, or an error if more than one key matches the specification. Designed to be used when it is known that particular types of queries are guaranteed to be unique."
