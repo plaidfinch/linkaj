@@ -173,10 +173,14 @@
                               (if (relation-in? this a)
                                   (apply (comp set union)
                                          (for [v vs]
-                                              (map #(attr-get
-                                                      edges-map %
-                                                      (opposite relations-map a))
-                                                   (keys-with edges-map a (id v)))))
+                                              (or [(attr-get edges-map (id v)
+                                                             (opposite
+                                                               relations-map a))]
+                                                  (map #(attr-get edges-map %
+                                                                  (opposite
+                                                                    relations-map a))
+                                                       (keys-with
+                                                         edges-map a (id v))))))
                                   (apply (comp set union)
                                          (for [v vs]
                                               (keys-with nodes-map a v)))))))))
