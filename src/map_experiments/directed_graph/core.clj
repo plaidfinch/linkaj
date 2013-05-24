@@ -278,8 +278,8 @@
                   (edges this)
                   (apply intersection
                          (for [[a vs] query]
-                              (if (relation-in? this a)
-                                  (apply (comp set union)
+                              (apply (comp set union)
+                                     (if (relation-in? this a)
                                          (for [v vs]
                                               (cond (node? v)
                                                     (keys-with edges-map a (id v))
@@ -289,8 +289,7 @@
                                                       (attr-get edges-map (id v) (opposite relations-map a)))
                                                     :else
                                                     (throw (IllegalArgumentException.
-                                                             "Edges can only be related to nodes, and by extension, to edges.")))))
-                                  (apply (comp set union)
+                                                             "Edges can only be related to nodes, and by extension, to edges."))))
                                          (for [v vs]
                                               (keys-with edges-map a v)))))))))
   (edge-in? [this o]
