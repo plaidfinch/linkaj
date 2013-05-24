@@ -27,7 +27,7 @@ More documentation about directed graphs is forthcoming, but here are some sampl
      (add-cycle [:from :to]
                 {:foo true :bar 500}
                 (-#- (sort-by :id (nodes))))
-     (n-away-from :from 2 (nodes {:id ['A]})))
+     (nodes-away 2 :from (nodes {:id ['A]})))
 
 ;=> ({:color :red, :id C})
 ```

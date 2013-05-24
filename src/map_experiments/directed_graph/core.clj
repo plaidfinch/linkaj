@@ -627,9 +627,9 @@
            graph
            (partition 2 1 (concat ns [(first ns)])))))
 
-(defn n-away-from
+(defn nodes-away
   "Finds all nodes which are n edges away from the given set of nodes along the relation given."
-  ([graph rel distance ns]
+  ([graph distance rel ns]
    (cond (< distance 0)
          (n-away-from graph (opposite (relations graph) rel) (- distance) ns)
          (= distance 0) ns
