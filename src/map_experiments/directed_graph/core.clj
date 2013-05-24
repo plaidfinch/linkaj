@@ -631,9 +631,10 @@
   "Finds all nodes which are n edges away from the given set of nodes along the relation given."
   ([graph distance rel ns]
    (cond (< distance 0)
-         (n-away-from graph (opposite (relations graph) rel) (- distance) ns)
+         (nodes-away graph (- distance) (opposite (relations graph) rel) ns)
          (= distance 0) ns
          :else
-         (n-away-from graph rel
-                      (dec distance)
-                      (-#> graph (nodes {rel ns}))))))
+         (nodes-away graph
+                     (dec distance)
+                     rel
+                     (-#> graph (nodes {rel ns}))))))
