@@ -170,18 +170,12 @@
                   (nodes this)
                   (apply intersection
                          (for [[a vs] query]
-                              (if (relation-in? this a)
-                                  (apply (comp set union)
+                              (apply (comp set union)
+                                     (if (relation-in? this a)
                                          (for [v vs]
-                                              (or [(attr-get edges-map (id v)
-                                                             (opposite
-                                                               relations-map a))]
-                                                  (map #(attr-get edges-map %
-                                                                  (opposite
-                                                                    relations-map a))
-                                                       (keys-with
-                                                         edges-map a (id v))))))
-                                  (apply (comp set union)
+                                              (or (seq (map #(attr-get edges-map % (opposite relations-map a))
+                                                       (keys-with edges-map a (id v))))
+                                                  [(attr-get edges-map (id v) (opposite relations-map a))]))
                                          (for [v vs]
                                               (keys-with nodes-map a v)))))))))
   (node-in? [this o]
