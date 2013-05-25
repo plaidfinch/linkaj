@@ -192,8 +192,8 @@
            (Surjection. metadata
                         (assoc active k v)
                         (assoc
-                          (if-let [old-k-v (find active k)]
-                                  (disj mirror [(val old-k-v) k])
+                          (if-let [[_ old-v] (find active k)]
+                                  (disj mirror [old-v k])
                                   mirror)
                           v k)))
     (without [this k] 
@@ -239,8 +239,8 @@
     (assoc [this k v]
            (InvertedSurjection. metadata
                                 (assoc
-                                  (if-let [old-v-k (find active v)]
-                                          (disj active [(val old-v-k) k])
+                                  (if-let [[_ old-k] (find mirror v)]
+                                          (disj active [old-k v])
                                           active)
                                   k v)
                                 (assoc mirror v k)))
