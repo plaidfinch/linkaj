@@ -191,7 +191,11 @@
     (assoc [this k v]
            (Surjection. metadata
                         (assoc active k v)
-                        (assoc (disj mirror [(get active k) k]) v k)))
+                        (assoc
+                          (if-let [old-k-v (find active k)]
+                                  (disj mirror [(val old-k-v) k])
+                                  mirror)
+                          v k)))
     (without [this k] 
              (disj this [k (get active k)]))
   IPersistentCollection
@@ -234,7 +238,11 @@
   IPersistentMap
     (assoc [this k v]
            (InvertedSurjection. metadata
-                                (assoc (disj active [(get mirror v) v]) k v)
+                                (assoc
+                                  (if-let [old-v-k (find active v)]
+                                          (disj active [(val old-v-k) k])
+                                          active)
+                                  k v)
                                 (assoc mirror v k)))
     (without [this k] 
              (reduce disj this (map (partial vector k) (get active k))))
