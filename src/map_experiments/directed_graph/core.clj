@@ -171,10 +171,10 @@
          (map (partial graph-node this)
               (when (< 0 (count nodes-set)) nodes-set)))
   (nodes [this query]
-         (seq 
-           (map (partial graph-node this)
-                (if (not (seq query))
-                    (nodes this)
+         (if (not (seq query))
+             (nodes this)
+             (seq 
+               (map (partial graph-node this)
                     (apply intersection
                            (for [[a vs] query]
                                 (apply (comp set union)
@@ -280,10 +280,10 @@
               (when (< 0 (count edges-map))
                     (apply hash-set (keys edges-map)))))
   (edges [this query]
-         (seq
-           (map (partial graph-edge this)
-                (if (not (seq query))
-                    (edges this)
+         (if (not (seq query))
+             (edges this)
+             (seq
+               (map (partial graph-edge this)
                     (apply intersection
                            (for [[a vs] query]
                                 (apply (comp set union)
