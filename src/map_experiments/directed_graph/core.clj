@@ -6,7 +6,12 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
-(declare edges-touching starting-node-seq starting-edge-seq remove-edges graph-node graph-edge node? edge?)
+(declare
+  edges-touching
+  starting-node-seq starting-edge-seq
+  remove-edges remove-nodes
+  graph-node graph-edge
+  node? edge?)
 
 ; Some useful functions which might be of use to people doing other things:
 
@@ -25,7 +30,7 @@
    (not (nil? (seq (apply intersection (map (comp set keys) ms)))))))
 
 (defn map-cross
-  "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences)."
+  "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences). If any key is not a sequence, it is treated as if it is a sequence of one item."
   ([m]
    (when (seq m)
          (if-let [[k x] (first m)]
@@ -37,7 +42,7 @@
                           (for [v vs]
                                (hash-map k v))))))))
 
-; Private functions for internal things:
+; Parse-relations takes a list of attributes and a relations-map and returns a 2-tuple of maps: the relations contained in the map, and all other attributes in the map. It's private as there's little to no use for it outside the type definition.
 
 (defn- parse-relations
   ([attributes relations-map]
@@ -414,6 +419,8 @@
               nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
               new-meta)))
 
+; Defining GraphNodes and GraphEdges, which are emitted from the graph in response to queries:
+
 ; GraphNodes are ephemeral maps which contain a hidden id. They are emitted from node queries and their keys/values are looked up lazily, which means that one can efficiently map over a set of GraphNodes without the program having to look up every value in each node.
 
 (deftype GraphNode [metadata graph id]
@@ -448,12 +455,6 @@
   IMeta (meta [this] metadata)
   Object (toString [this] (str (get (.nodes-map ^DirectedGraph graph) id)))
   MapEquivalence)
-
-(defn node? [x]
-  (instance? GraphNode x))
-
-(defn- graph-node [graph id]
-  (GraphNode. nil graph id))
 
 (defn- make-edge-map [graph id]
   (let [edge-map (get (.edges-map ^DirectedGraph graph) id)
@@ -514,9 +515,9 @@
   IMeta (meta [this] metadata)
   MapEquivalence)
 
-(defn edge? [x]
-  (instance? GraphEdge x))
-
+; Private constructors for graph nodes and edges. You shouldn't use these; graph nodes and edges will be generated automatically from queries and should not be manually constructed by client code.
+(defn- graph-node [graph id]
+  (GraphNode. nil graph id))
 (defn- graph-edge [graph id]
   (GraphEdge. nil graph id))
 
@@ -543,19 +544,46 @@
                    relations)
            constraints)))
 
-; Additional methods for semantic ease...
-
 ; Variadic map-destructing methods for protocol methods which take maps. This means that the syntax for queries can be *much* more succinct. Note that every method here simply destructures its rest arguments as a map and uses the corresponding asterisk method from the protocol.
 
-(defn nodes [graph & query] (nodes* graph (apply hash-map query)))
-(defn add-node [graph & attributes] (add-node* graph (apply hash-map attributes)))
-(defn assoc-node [graph n & attributes] (assoc-node* graph n (apply hash-map attributes)))
-(defn dissoc-node [graph n & attribute-ks] (dissoc-node* graph n (apply hash-map attribute-ks)))
+(defn nodes 
+  "Returns all graph nodes matching the query."
+  ([graph & query]
+   (nodes* graph (apply hash-map query))))
+(defn add-node
+  "Adds a node with attributes to the graph."
+  ([graph & attributes] (add-node* graph (apply hash-map attributes))))
+(defn assoc-node
+  "Associates node n with attributes."
+  ([graph n & attributes] (assoc-node* graph n (apply hash-map attributes))))
+(defn dissoc-node
+  "Dissociates node n from attribute-keys."
+  ([graph n & attribute-ks] (dissoc-node* graph n (apply hash-map attribute-ks))))
 
-(defn edges [graph & query] (edges* graph (apply hash-map query)))
-(defn add-edge [graph & attributes] (add-edge* graph (apply hash-map attributes)))
-(defn assoc-edge [graph n & attributes] (assoc-edge* graph n (apply hash-map attributes)))
-(defn dissoc-edge [graph n & attribute-ks] (dissoc-edge* graph n (apply hash-map attribute-ks)))
+(defn edges
+  "Returns all graph edges matching the query."
+  ([graph & query] (edges* graph (apply hash-map query))))
+(defn add-edge
+  "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites."
+  ([graph & attributes] (add-edge* graph (apply hash-map attributes))))
+(defn assoc-edge
+  "Associates edge-key with attributes. This can change relations."
+  ([graph n & attributes] (assoc-edge* graph n (apply hash-map attributes))))
+(defn dissoc-edge
+  "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."
+  ([graph n & attribute-ks] (dissoc-edge* graph n (apply hash-map attribute-ks))))
+
+; Additional methods...
+
+; Predicates for being nodes and edges:
+
+(defn node?
+  "Tests if its argument is a GraphNode."
+  ([x] (instance? GraphNode x)))
+
+(defn edge?
+  "Tests if its argument is a GraphEdge."
+  ([x] (instance? GraphEdge x)))
 
 ; Singular selectors for nodes and edges:
 
