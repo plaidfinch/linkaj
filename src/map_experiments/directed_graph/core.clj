@@ -176,20 +176,21 @@
              (seq 
                (map (partial graph-node this)
                     (apply intersection
-                           (for [[a vs] query]
-                                (apply (comp set union)
-                                       (if (relation-in? this a)
-                                           (for [v vs]
-                                                (cond (node? v)
-                                                      (map #(attr-get edges-map % (opposite relations-map a))
-                                                           (keys-with edges-map a (id v)))
-                                                      (edge? v)
-                                                      [(attr-get edges-map (id v) (opposite relations-map a))]
-                                                      :else
-                                                      (throw (IllegalArgumentException.
-                                                               "Nodes can only be related to nodes, and by extension, to edges."))))
-                                           (for [v vs]
-                                                (keys-with nodes-map a v))))))))))
+                           (for [[a x] query]
+                                (let [vs (if (sequential? x) x [x])]
+                                     (apply (comp set union)
+                                            (if (relation-in? this a)
+                                                (for [v vs]
+                                                     (cond (node? v)
+                                                           (map #(attr-get edges-map % (opposite relations-map a))
+                                                                (keys-with edges-map a (id v)))
+                                                           (edge? v)
+                                                           [(attr-get edges-map (id v) (opposite relations-map a))]
+                                                           :else
+                                                           (throw (IllegalArgumentException.
+                                                                    "Nodes can only be related to nodes, and by extension, to edges."))))
+                                                (for [v vs]
+                                                     (keys-with nodes-map a v)))))))))))
   (node-in? [this o]
             (and (node? o)
                  ; The below rigorous check breaks any method which wants to reduce a graph across a set of nodes. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
@@ -285,21 +286,22 @@
              (seq
                (map (partial graph-edge this)
                     (apply intersection
-                           (for [[a vs] query]
-                                (apply (comp set union)
-                                       (if (relation-in? this a)
-                                           (for [v vs]
-                                                (cond (node? v)
-                                                      (keys-with edges-map a (id v))
-                                                      (edge? v)
-                                                      (keys-with
-                                                        edges-map a
-                                                        (attr-get edges-map (id v) (opposite relations-map a)))
-                                                      :else
-                                                      (throw (IllegalArgumentException.
-                                                               "Edges can only be related to nodes, and by extension, to edges."))))
-                                           (for [v vs]
-                                                (keys-with edges-map a v))))))))))
+                           (for [[a x] query]
+                                (let [vs (if (sequential? x) x [x])]
+                                     (apply (comp set union)
+                                            (if (relation-in? this a)
+                                                (for [v vs]
+                                                     (cond (node? v)
+                                                           (keys-with edges-map a (id v))
+                                                           (edge? v)
+                                                           (keys-with
+                                                             edges-map a
+                                                             (attr-get edges-map (id v) (opposite relations-map a)))
+                                                           :else
+                                                           (throw (IllegalArgumentException.
+                                                                    "Edges can only be related to nodes, and by extension, to edges."))))
+                                                (for [v vs]
+                                                     (keys-with edges-map a v)))))))))))
   (edge-in? [this o]
             (and (edge? o)
                  ; The below rigorous check breaks any method which wants to reduce a graph across a set of edges. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
