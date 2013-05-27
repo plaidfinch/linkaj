@@ -392,14 +392,6 @@
              :nodes (-#> this nodes*)
              :edges (-#> this edges*)}))
   
-  Associative
-  (containsKey [this k]
-               (or (edge-in? this k)
-                   (node-in? this k)))
-  (entryAt [this k]
-           (when (contains? this k)
-                 (clojure.lang.MapEntry. k (get this k))))
-  
   Object
   (toString [this]
             (str (into {} (seq this))))
