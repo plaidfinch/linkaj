@@ -442,6 +442,7 @@
   Object (toString [this] (str (get (.nodes-map ^DirectedGraph graph) id)))
   MapEquivalence)
 
+; Forces all the attributes and relations of an edge into a non-lazy map.
 (defn- make-edge-map [graph id]
   (let [edge-map (get (.edges-map ^DirectedGraph graph) id)
         rels (keys (select-keys edge-map (mapcat identity (.relations-map ^DirectedGraph graph))))]
@@ -661,7 +662,8 @@
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
   ([graph rels ns & attributes]
    {:pre (= 2 (count rels))}
-   (let [attrs (apply hash-map attributes)]
+   (let [ns (if (sequential? ns) ns [ns])
+         attrs (apply hash-map attributes)]
         (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
                                              (second rels) (second %2)}))
                 graph
