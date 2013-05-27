@@ -386,12 +386,6 @@
            constraints-fn
            metadata))
   
-  IPersistentMap
-  (assoc [this k attributes]
-         (cond (node-in? this k) (assoc-node* this k attributes)
-               (edge-in? this k) (assoc-edge* this k attributes)
-               :else this))
-  
   Seqable
   (seq [this]
        (seq {:relations relations-map
