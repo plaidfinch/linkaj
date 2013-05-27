@@ -23,23 +23,23 @@ More documentation about directed graphs is forthcoming, but here are some sampl
 
 ```clojure
 (-#> (digraph :relations [[:from :to]])
-     (add-nodes {:id ['A 'B 'C 'D] :color [:red]})
+     (add-nodes :id ['A 'B 'C 'D] :color :red)
      (add-cycle [:from :to]
-                {:foo true :bar 500}
-                (-#- (sort-by :id (nodes))))
-     (nodes-away 2 :from (nodes {:id ['A]})))
+                (-#- (sort-by :id (nodes)))
+                :foo true :bar 500)
+     (nodes-away 2 :from (node :id 'A)))
 
 ;=> ({:color :red, :id C})
 ```
 
 ```clojure
 (-#> (digraph :relations [[:parent :child]])
-     (add-nodes {:id [1 2 3]})
-     (add-edges {:parent (nodes {:id [2]})
-                 :child  (nodes {:id [1 3]})})
-     (assoc-edge (edge {:parent (node {:id [2]})
-                        :child  (node {:id [3]})})
-                 {:foo true})
+     (add-nodes :id [1 2 3])
+     (add-edges :parent (node :id 2)
+                :child (nodes :id [1 3]))
+     (assoc-edge (edge :parent (node :id 2)
+                       :child  (node :id 3))
+                 :foo true)
      edges)
 
 ;=> ({:parent {:id 2}, :child {:id 1}} {:parent {:id 2}, :foo true, :child {:id 3}})

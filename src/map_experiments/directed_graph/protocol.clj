@@ -25,32 +25,30 @@
   "Protocol for a directed graph."
   
   ; Methods acting on nodes:
-  (nodes [graph] [graph query]
+  (nodes* [graph] [graph query]
     "Returns all graph nodes matching the query.")
   (node-in? [graph x]
     "Returns true if x is a node key in the graph.")
-  (add-node [graph attributes]
+  (add-node* [graph attributes]
     "Adds a node with attributes to the graph.")
   (remove-node [graph n]
     "Removes node n from the graph, as well as all edges which are directly connected to this node.")
-  (assoc-node [graph n attributes]
+  (assoc-node* [graph n attributes]
     "Associates node n with attributes.")
-  (dissoc-node [graph n attribute-keys]
+  (dissoc-node* [graph n attribute-keys]
     "Dissociates node n from attribute-keys.")
   
   ; Methods acting on edges:
-  (edges [graph] [graph query]
+  (edges* [graph] [graph query]
     "Returns all graph edges matching the query.")
   (edge-in? [graph x]
     "Returns true if x is an edge in the graph.")
-  (add-edge [graph attributes]
+  (add-edge* [graph attributes]
     "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites.")
-  (remove-edge [graph edge-key]
+  (remove-edge [graph e]
     "Removes edge-key from the graph.")
-  (assoc-edge [graph edge-key attributes]
-    "Associates edge-key with attributes. This cannot change relations.")
-  (move-edge [graph edge-key relations]
-    "Moves edge to have relations. This cannot change which relations there are, only the nodes to which the edge is related.")
-  (dissoc-edge [graph edge-key attribute-keys]
+  (assoc-edge* [graph e attributes]
+    "Associates edge-key with attributes. This can change relations.")
+  (dissoc-edge* [graph e attribute-keys]
     "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."))
 
