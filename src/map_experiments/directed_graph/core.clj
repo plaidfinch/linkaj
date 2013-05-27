@@ -590,19 +590,19 @@
    (reduce add-node* graph (map-cross (apply hash-map attributes)))))
 
 (defn remove-nodes
-  "Removes all nodes in ns from the graph."
-  ([graph ns]
-   (reduce remove-node graph ns)))
+  "Removes all nodes in xs from the graph."
+  ([graph xs]
+   (reduce remove-node graph xs)))
 
 (defn assoc-nodes
-  "Associates all nodes in ns with the attributes."
-  ([graph ns & attributes]
-   (reduce #(assoc-node* %1 %2 (apply hash-map attributes)) graph ns)))
+  "Associates all nodes in xs with the attributes."
+  ([graph xs & attributes]
+   (reduce #(assoc-node* %1 %2 (apply hash-map attributes)) graph xs)))
 
 (defn dissoc-nodes
-  "Dissociates all nodes in ns from the attribute-keys."
-  ([graph ns & attribute-keys]
-   (reduce #(dissoc-node* %1 %2 (apply hash-map attribute-keys)) graph ns)))
+  "Dissociates all nodes in xs from the attribute-keys."
+  ([graph xs & attribute-keys]
+   (reduce #(dissoc-node* %1 %2 (apply hash-map attribute-keys)) graph xs)))
 
 ; Plural operators for edges:
 
@@ -650,34 +650,34 @@
 
 (defn add-path
   "Adds edges between each adjacent node given, along the relation given."
-  ([graph rels ns & attributes]
+  ([graph rels xs & attributes]
    {:pre (= 2 (count rels))}
    (let [attrs (apply hash-map attributes)]
         (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
                                              (second rels) (second %2)}))
                 graph
-                (partition 2 1 ns)))))
+                (partition 2 1 xs)))))
 
 (defn add-cycle
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
-  ([graph rels ns & attributes]
+  ([graph rels xs & attributes]
    {:pre (= 2 (count rels))}
-   (let [ns (if (sequential? ns) ns [ns])
+   (let [xs (if (sequential? xs) xs [xs])
          attrs (apply hash-map attributes)]
         (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
                                              (second rels) (second %2)}))
                 graph
-                (partition 2 1 (concat ns [(first ns)]))))))
+                (partition 2 1 (concat xs [(first xs)]))))))
 
 (defn nodes-away
   "Finds all nodes which are n edges away from the given set of nodes along the relation given."
-  ([graph distance rel ns]
-   (let [ns (if (sequential? ns) ns [ns])]
+  ([graph distance rel xs]
+   (let [xs (if (sequential? xs) xs [xs])]
         (cond (< distance 0)
-              (nodes-away graph (- distance) (opposite (relations graph) rel) ns)
-              (= distance 0) ns
+              (nodes-away graph (- distance) (opposite (relations graph) rel) xs)
+              (= distance 0) xs
               :else
               (nodes-away graph
                           (dec distance)
                           rel
-                          (-#> graph (nodes rel ns)))))))
+                          (-#> graph (nodes rel xs)))))))
