@@ -37,8 +37,8 @@ More documentation about directed graphs is forthcoming, but here are some sampl
      (add-nodes {:id [1 2 3]})
      (add-edges {:parent (nodes {:id [2]})
                  :child  (nodes {:id [1 3]})})
-     (assoc-edge (edge {:parent [(node {:id [2]})]
-                        :child  [(node {:id [3]})]})
+     (assoc-edge (edge {:parent (node {:id [2]})
+                        :child  (node {:id [3]})})
                  {:foo true})
      edges)
 
