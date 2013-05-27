@@ -545,31 +545,17 @@
 
 ; Additional methods for semantic ease...
 
-; Variadic map-destructing methods for asterisk protocol methods:
+; Variadic map-destructing methods for protocol methods which take maps. This means that the syntax for queries can be *much* more succinct. Note that every method here simply destructures its rest arguments as a map and uses the corresponding asterisk method from the protocol.
 
-(defn nodes
-  ([graph & query] (nodes* graph (apply hash-map query))))
+(defn nodes [graph & query] (nodes* graph (apply hash-map query)))
+(defn add-node [graph & attributes] (add-node* graph (apply hash-map attributes)))
+(defn assoc-node [graph n & attributes] (assoc-node* graph n (apply hash-map attributes)))
+(defn dissoc-node [graph n & attribute-ks] (dissoc-node* graph n (apply hash-map attribute-ks)))
 
-(defn add-node
-  ([graph & attributes] (add-node* graph (apply hash-map attributes))))
-
-(defn assoc-node
-  ([graph n & attributes] (assoc-node* graph n (apply hash-map attributes))))
-
-(defn dissoc-node
-  ([graph n & attribute-keys] (dissoc-node* graph n (apply hash-map attribute-keys))))
-
-(defn edges
-  ([graph & query] (edges* graph (apply hash-map query))))
-
-(defn add-edge
-  ([graph & attributes] (add-edge* graph (apply hash-map attributes))))
-
-(defn assoc-edge
-  ([graph n & attributes] (assoc-edge* graph n (apply hash-map attributes))))
-
-(defn dissoc-edge
-  ([graph n & attribute-keys] (dissoc-edge* graph n (apply hash-map attribute-keys))))
+(defn edges [graph & query] (edges* graph (apply hash-map query)))
+(defn add-edge [graph & attributes] (add-edge* graph (apply hash-map attributes)))
+(defn assoc-edge [graph n & attributes] (assoc-edge* graph n (apply hash-map attributes)))
+(defn dissoc-edge [graph n & attribute-ks] (dissoc-edge* graph n (apply hash-map attribute-ks)))
 
 ; Singular selectors for nodes and edges:
 
