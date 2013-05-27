@@ -654,8 +654,6 @@
 
 (defn relate
   "Creates an edge between n1 and n2 related to n1 by rel and to n2 by its opposite. More succinct in some cases than add-edge. Gives the edge attributes, if any."
-  ([graph rel n1 n2]
-   (relate graph rel n1 n2 {}))
   ([graph rel n1 n2 & attributes]
    (let [attrs (apply hash-map attributes)]
         (-#> graph
