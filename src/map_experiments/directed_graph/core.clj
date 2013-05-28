@@ -247,7 +247,7 @@
                                :add this (graph-edge % edge-key) %)
                               (DirectedGraph.
                                 nodes-set nodes-map
-                                (assoc edges-relations edge-key (apply bijection (keys relations)))
+                                (assoc edges-relations edge-key (set (keys relations)))
                                 new-edges-map
                                 node-id-seq
                                 (rest edge-id-seq)
@@ -472,7 +472,7 @@
   (id [this] id)
   Relational
   (relations [this]
-             (hash-set (apply set (get (.edges-relations ^DirectedGraph graph) id))))
+             (hash-set (get (.edges-relations ^DirectedGraph graph) id)))
   (related-in? [this r1 r2]
                (every? (relation this) [r1 r2]))
   (relation-in? [this r]
