@@ -389,8 +389,8 @@
   Seqable
   (seq [this]
        (seq {:relations relations-map
-             :nodes (-#> this nodes*)
-             :edges (-#> this edges*)}))
+             :nodes (-#> this nodes)
+             :edges (-#> this edges)}))
   
   Object
   (toString [this]
