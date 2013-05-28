@@ -669,30 +669,27 @@
 (defn relate
   "Creates an edge between n1 and n2 related to n1 by rel and to n2 by its opposite. More succinct in some cases than add-edge. Gives the edge attributes, if any."
   ([graph rel n1 n2 & {:as attributes}]
-   (let [attrs (apply hash-map attributes)]
-        (-#> graph
-             (add-edge* (-#| (assoc attrs
-                                    rel n1
-                                    (opposite (relations graph) rel) n2)))))))
+   (-#> graph
+        (add-edge* (-#| (assoc attributes
+                               rel n1
+                               (opposite (relations graph) rel) n2))))))
 
 (defn add-path
   "Adds edges between each adjacent node given, along the relation given."
   ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
-   (let [attrs (apply hash-map attributes)]
-        (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
+   (reduce #(add-edge* %1 (merge attributes {(first rels)  (first %2)
                                              (second rels) (second %2)}))
-                graph
-                (partition 2 1 xs)))))
+           graph
+           (partition 2 1 xs))))
 
 (defn add-cycle
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
   ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
-   (let [xs (if (sequential? xs) xs [xs])
-         attrs (apply hash-map attributes)]
-        (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
-                                             (second rels) (second %2)}))
+   (let [xs (if (sequential? xs) xs [xs])]
+        (reduce #(add-edge* %1 (merge attributes {(first rels)  (first %2)
+                                                  (second rels) (second %2)}))
                 graph
                 (partition 2 1 (concat xs [(first xs)]))))))
 
