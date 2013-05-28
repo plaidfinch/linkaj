@@ -558,30 +558,30 @@
 
 (defn nodes 
   "Returns all graph nodes matching the query."
-  ([graph & query]
-   (nodes* graph (apply hash-map query))))
+  ([graph & {:as query}]
+   (nodes* graph query)))
 (defn add-node
   "Adds a node with attributes to the graph."
-  ([graph & attributes] (add-node* graph (apply hash-map attributes))))
+  ([graph & {:as attributes}] (add-node* graph attributes)))
 (defn assoc-node
   "Associates node n with attributes."
-  ([graph n & attributes] (assoc-node* graph n (apply hash-map attributes))))
+  ([graph n & {:as attributes}] (assoc-node* graph n attributes)))
 (defn dissoc-node
   "Dissociates node n from attribute-keys."
-  ([graph n & attribute-ks] (dissoc-node* graph n (apply hash-map attribute-ks))))
+  ([graph n & {:as attribute-ks}] (dissoc-node* graph n attribute-ks)))
 
 (defn edges
   "Returns all graph edges matching the query."
-  ([graph & query] (edges* graph (apply hash-map query))))
+  ([graph & {:as query}] (edges* graph query)))
 (defn add-edge
   "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites."
-  ([graph & attributes] (add-edge* graph (apply hash-map attributes))))
+  ([graph & {:as attributes}] (add-edge* graph attributes)))
 (defn assoc-edge
   "Associates edge-key with attributes. This can change relations."
-  ([graph n & attributes] (assoc-edge* graph n (apply hash-map attributes))))
+  ([graph n & {:as attributes}] (assoc-edge* graph n attributes)))
 (defn dissoc-edge
   "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."
-  ([graph n & attribute-ks] (dissoc-edge* graph n (apply hash-map attribute-ks))))
+  ([graph n & {:as attribute-ks}] (dissoc-edge* graph n attribute-ks)))
 
 ; Additional methods...
 
@@ -613,8 +613,8 @@
 
 (defn add-nodes
   "Adds all possible nodes matching attributes (format like query) to the graph."
-  ([graph & attributes]
-   (reduce add-node* graph (map-cross (apply hash-map attributes)))))
+  ([graph & {:as attributes}]
+   (reduce add-node* graph (map-cross attributes))))
 
 (defn remove-nodes
   "Removes all nodes in xs from the graph."
@@ -623,20 +623,20 @@
 
 (defn assoc-nodes
   "Associates all nodes in xs with the attributes."
-  ([graph xs & attributes]
-   (reduce #(assoc-node* %1 %2 (apply hash-map attributes)) graph xs)))
+  ([graph xs & {:as attributes}]
+   (reduce #(assoc-node* %1 %2 attributes)) graph xs))
 
 (defn dissoc-nodes
   "Dissociates all nodes in xs from the attribute-keys."
-  ([graph xs & attribute-keys]
-   (reduce #(dissoc-node* %1 %2 (apply hash-map attribute-keys)) graph xs)))
+  ([graph xs & {:as attribute-keys}]
+   (reduce #(dissoc-node* %1 %2 attribute-keys)) graph xs))
 
 ; Plural operators for edges:
 
 (defn add-edges
   "Adds all possible nodes matching attributes (format like query) to the graph."
-  ([graph & attributes]
-   (reduce add-edge* graph (map-cross (apply hash-map attributes)))))
+  ([graph & {:as attributes}]
+   (reduce add-edge* graph (map-cross attributes))))
 
 (defn remove-edges
   "Removes all edges in edge-keys from the graph."
@@ -645,13 +645,13 @@
 
 (defn assoc-edges
   "Associates all edges in edge-keys with the attributes."
-  ([graph es & attributes]
-   (reduce #(assoc-edge* %1 %2 (apply hash-map attributes)) graph es)))
+  ([graph es & {:as attributes}]
+   (reduce #(assoc-edge* %1 %2 attributes)) graph es))
 
 (defn dissoc-edges
   "Dissociates all edges in edge-keys from the attribute-keys."
-  ([graph es & attribute-keys]
-   (reduce #(dissoc-edge* %1 %2 (apply hash-map attribute-keys)) graph es)))
+  ([graph es & {:as attribute-keys}]
+   (reduce #(dissoc-edge* %1 %2 attribute-keys)) graph es))
 
 ; Other useful operators:
 
@@ -663,12 +663,12 @@
 
 (defn assoc-all
   "Associates every item (edge or node) with the attributes."
-  ([graph ks & attributes]
-   (reduce #(assoc %1 %2 (apply hash-map attributes)) graph ks)))
+  ([graph ks & {:as attributes}]
+   (reduce #(assoc %1 %2 attributes)) graph ks))
 
 (defn relate
   "Creates an edge between n1 and n2 related to n1 by rel and to n2 by its opposite. More succinct in some cases than add-edge. Gives the edge attributes, if any."
-  ([graph rel n1 n2 & attributes]
+  ([graph rel n1 n2 & {:as attributes}]
    (let [attrs (apply hash-map attributes)]
         (-#> graph
              (add-edge* (-#| (assoc attrs
@@ -677,7 +677,7 @@
 
 (defn add-path
   "Adds edges between each adjacent node given, along the relation given."
-  ([graph rels xs & attributes]
+  ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
    (let [attrs (apply hash-map attributes)]
         (reduce #(add-edge* %1 (merge attrs {(first rels)  (first %2)
@@ -687,7 +687,7 @@
 
 (defn add-cycle
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
-  ([graph rels xs & attributes]
+  ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
    (let [xs (if (sequential? xs) xs [xs])
          attrs (apply hash-map attributes)]
