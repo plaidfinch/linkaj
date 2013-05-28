@@ -414,17 +414,27 @@
 
 ; GraphNodes are ephemeral maps which contain a hidden id. They are emitted from node queries and their keys/values are looked up lazily, which means that one can efficiently map over a set of GraphNodes without the program having to look up every value in each node.
 
+; Forces all the attributes of a node into a hash-map.
+(defn make-node-map [graph id]
+  (get (.nodes-map ^DirectedGraph graph) id))
+
 (deftype GraphNode [metadata graph id]
   IComponent
   (id [this] id)
   IPersistentMap
   (assoc [this k v]
-         (with-meta (assoc (get (.nodes-map ^DirectedGraph graph) id) k v) metadata))
+         (with-meta
+           (assoc (make-node-map graph id) k v)
+           metadata))
   (without [this k]
-           (with-meta (dissoc (get (.nodes-map ^DirectedGraph graph) id) k) metadata))
+           (with-meta
+             (dissoc (make-node-map graph id) k)
+             metadata))
   IPersistentCollection
   (cons [this x]
-        (with-meta (conj (get (.nodes-map ^DirectedGraph graph) id) x) metadata))
+        (with-meta
+          (conj (make-node-map graph id) x)
+          metadata))
   (equiv [this o]
          (and (isa? (class o) GraphNode)
               (= id (.id ^GraphNode o))
@@ -437,7 +447,7 @@
                (if (attr-get (.nodes-map ^DirectedGraph graph) id k) true false))
   (entryAt [this k]
            (when (contains? this k)
-                 (clojure.lang.MapEntry. k (attr-get (.nodes-map ^DirectedGraph graph) id k))))
+                 (clojure.lang.MapEntry. k (get this k))))
   ILookup
   (valAt [this k] (attr-get (.nodes-map ^DirectedGraph graph) id k))
   (valAt [this k not-found] (attr-get (.nodes-map ^DirectedGraph graph) id k not-found))
