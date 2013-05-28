@@ -12,7 +12,8 @@
   remove-edges remove-nodes
   graph-node graph-edge
   nodes edges
-  node? edge?)
+  node? edge?
+  relation)
 
 ; Some useful functions which might be of use to people doing other things:
 
@@ -58,6 +59,7 @@
 
 (deftype DirectedGraph [nodes-set
                         nodes-map
+                        edges-relations
                         edges-map
                         node-id-seq
                         edge-id-seq
@@ -118,7 +120,7 @@
                            (DirectedGraph.
                              (conj nodes-set node-key)
                              new-nodes-map
-                             edges-map
+                             edges-relations edges-map
                              (rest node-id-seq)
                              edge-id-seq relations-map constraints-fn metadata)))))
   (remove-node [this n]
@@ -137,7 +139,7 @@
                                (DirectedGraph.
                                  (disj nodes-set node-key)
                                  new-nodes-map
-                                 edges-map
+                                 edges-relations edges-map
                                  (if (node-in? this n)
                                      (cons node-key node-id-seq)
                                      node-id-seq)
@@ -161,7 +163,7 @@
                                  (DirectedGraph.
                                    nodes-set
                                    new-nodes-map
-                                   edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
+                                   edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
   (dissoc-node* [this n attribute-keys]
                 (if (not (node-in? this n))
                     (throw (IllegalArgumentException.
@@ -174,7 +176,7 @@
                             (DirectedGraph.
                               nodes-set
                               new-nodes-map
-                              edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+                              edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   
   ; Methods acting on edges:
   (edges* [this]
@@ -245,6 +247,7 @@
                                :add this (graph-edge % edge-key) %)
                               (DirectedGraph.
                                 nodes-set nodes-map
+                                (assoc edges-relations edge-key (apply bijection (keys relations)))
                                 new-edges-map
                                 node-id-seq
                                 (rest edge-id-seq)
@@ -259,6 +262,7 @@
                             :remove this (graph-edge % edge-key) %)
                            (DirectedGraph.
                              nodes-set nodes-map
+                             (dissoc edges-relations edge-key)
                              new-edges-map
                              node-id-seq
                              (if (edge-in? this edge-key)
@@ -300,7 +304,7 @@
                           (#(constraints-fn
                               :assoc this (graph-edge % edge-key) %)
                              (DirectedGraph.
-                               nodes-set nodes-map
+                               nodes-set nodes-map edges-relations
                                new-edges-map
                                node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
   (dissoc-edge* [this e attribute-keys]
@@ -321,12 +325,12 @@
                              (#(constraints-fn
                                  :dissoc this (graph-edge % edge-key) %)
                                 (DirectedGraph.
-                                  nodes-set nodes-map
+                                  nodes-set nodes-map edges-relations
                                   new-edges-map
                                   node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
   
   Relational
-  (relations [this] relations-map)
+  (relations [this] (set (map set relations-map)))
   (related-in? [this r1 r2]
                (and (relation-in? this r1)
                     (relation-in? this r2)
@@ -336,7 +340,7 @@
                     (contains? (inverse relations-map) r)))
   (add-relation [this r1 r2]
                 (DirectedGraph.
-                  nodes-set nodes-map edges-map node-id-seq edge-id-seq
+                  nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq
                   (assoc relations-map r1 r2)
                   constraints-fn metadata))
   (remove-relation [this r1 r2]
@@ -344,7 +348,7 @@
                             (nil? (keys-with-attr edges-map r1))
                             (nil? (keys-with-attr edges-map r2)))
                        (DirectedGraph.
-                         nodes-set nodes-map edges-map node-id-seq edge-id-seq
+                         nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq
                          (dissoc (rdissoc relations-map r1) r1)
                          constraints-fn metadata)
                        (throw (IllegalArgumentException.
@@ -353,14 +357,14 @@
   Constrained
   (add-constraint [this new-constraint]
                   (DirectedGraph.
-                    nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
+                    nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map
                     (fn [action x old-graph new-graph]
                       (new-constraint
                         action x old-graph (constraints-fn action x old-graph new-graph)))
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
-                       nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map
+                       nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map
                        (fn [action x old-graph new-graph] new-graph)
                        metadata))
   (verify-constraints [this]
@@ -379,6 +383,7 @@
          (DirectedGraph.
            (empty nodes-set)
            (empty nodes-map)
+           (empty edges-relations)
            (empty edges-map)
            (starting-node-seq)
            (starting-edge-seq)
@@ -402,7 +407,7 @@
   IObj
   (withMeta [this new-meta]
             (DirectedGraph.
-              nodes-set nodes-map edges-map node-id-seq edge-id-seq relations-map constraints-fn
+              nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn
               new-meta)))
 
 ; Defining GraphNodes and GraphEdges, which are emitted from the graph in response to queries:
@@ -445,7 +450,7 @@
 ; Forces all the attributes and relations of an edge into a non-lazy map.
 (defn- make-edge-map [graph id]
   (let [edge-map (get (.edges-map ^DirectedGraph graph) id)
-        rels (keys (select-keys edge-map (mapcat identity (.relations-map ^DirectedGraph graph))))]
+        rels (keys (select-keys edge-map (apply concat (.relations-map ^DirectedGraph graph))))]
        (reduce conj edge-map
                (map #(vector % (graph-node graph (get edge-map %)))
                     rels))))
@@ -455,6 +460,13 @@
 (deftype GraphEdge [metadata graph id]
   IComponent
   (id [this] id)
+  Relational
+  (relations [this]
+             (hash-set (apply set (get (.edges-relations ^DirectedGraph graph) id))))
+  (related-in? [this r1 r2]
+               (every? (relation this) [r1 r2]))
+  (relation-in? [this r]
+                (contains? (relation this) r))
   IPersistentMap
   (assoc [this k v]
          (with-meta
@@ -522,6 +534,7 @@
                    (DirectedGraph.
                      (hash-set)
                      (attr-map)
+                     (hash-map)
                      (attr-map)
                      (starting-node-seq)
                      (starting-edge-seq)
@@ -582,6 +595,10 @@
   "For selecting a single edge when you know the query is unique."
   (specific edges))
 
+(def relation
+  "Gets a singular relation from things with only one relation."
+  (specific relations))
+
 ; Plural operators for nodes:
 
 (defn add-nodes
@@ -632,7 +649,7 @@
   "Finds all edges which are connected by any relation to a particular node."
   ([graph n]
    (mapcat #(-#> graph (edges % n))
-           (mapcat identity (relations graph)))))
+           (apply concat (relations graph)))))
 
 (defn assoc-all
   "Associates every item (edge or node) with the attributes."
