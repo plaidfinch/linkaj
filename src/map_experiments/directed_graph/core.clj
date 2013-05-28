@@ -11,6 +11,7 @@
   starting-node-seq starting-edge-seq
   remove-edges remove-nodes
   graph-node graph-edge
+  nodes edges
   node? edge?)
 
 ; Some useful functions which might be of use to people doing other things:
@@ -365,7 +366,7 @@
   (verify-constraints [this]
                       (reduce constraints-fn
                               this
-                              (concat (nodes* this) (edges* this))))
+                              (concat (nodes this) (edges this))))
   
   IPersistentCollection
   (equiv [this o] 
@@ -673,10 +674,10 @@
   ([graph distance rel xs]
    (let [xs (if (sequential? xs) xs [xs])]
         (cond (< distance 0)
-              (nodes-away graph (- distance) (opposite (relations graph) rel) xs)
+              (recur graph (- distance) (opposite (relations graph) rel) xs)
               (= distance 0) xs
               :else
-              (nodes-away graph
-                          (dec distance)
-                          rel
-                          (-#> graph (nodes rel xs)))))))
+              (recur graph
+                     (dec distance)
+                     rel
+                     (-#> graph (nodes rel xs)))))))
