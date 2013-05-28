@@ -568,7 +568,7 @@
   ([graph n & {:as attributes}] (assoc-node* graph n attributes)))
 (defn dissoc-node
   "Dissociates node n from attribute-keys."
-  ([graph n & {:as attribute-ks}] (dissoc-node* graph n attribute-ks)))
+  ([graph n & attribute-ks] (dissoc-node* graph n attribute-ks)))
 
 (defn edges
   "Returns all graph edges matching the query."
@@ -581,7 +581,7 @@
   ([graph n & {:as attributes}] (assoc-edge* graph n attributes)))
 (defn dissoc-edge
   "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."
-  ([graph n & {:as attribute-ks}] (dissoc-edge* graph n attribute-ks)))
+  ([graph n & attribute-ks] (dissoc-edge* graph n attribute-ks)))
 
 ; Additional methods...
 
@@ -628,7 +628,7 @@
 
 (defn dissoc-nodes
   "Dissociates all nodes in xs from the attribute-keys."
-  ([graph xs & {:as attribute-keys}]
+  ([graph xs & attribute-keys]
    (reduce #(dissoc-node* %1 %2 attribute-keys)) graph xs))
 
 ; Plural operators for edges:
@@ -650,7 +650,7 @@
 
 (defn dissoc-edges
   "Dissociates all edges in edge-keys from the attribute-keys."
-  ([graph es & {:as attribute-keys}]
+  ([graph es & attribute-keys]
    (reduce #(dissoc-edge* %1 %2 attribute-keys)) graph es))
 
 ; Other useful operators:
