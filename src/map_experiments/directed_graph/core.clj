@@ -516,15 +516,15 @@
 
 ; Factory function for digraphs:
 (defn digraph
-  ([& {:keys [relations constraints internal-edge-ids internal-node-ids]}]
+  ([& {:keys [relations constraints]}]
    (reduce add-constraint
            (reduce (partial apply add-relation)
                    (DirectedGraph.
                      (hash-set)
                      (attr-map)
                      (attr-map)
-                     (or (seq internal-node-ids) (starting-node-seq))
-                     (or (seq internal-edge-ids) (starting-edge-seq))
+                     (starting-node-seq)
+                     (starting-edge-seq)
                      (bijection)
                      (fn [action x old-graph new-graph] new-graph)
                      (hash-map))
