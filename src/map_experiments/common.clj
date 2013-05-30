@@ -8,7 +8,7 @@
 (prefer-method print-method
   IPersistentMap IPersistentSet)
 
-(defn transientize [x empty-value]
+(defn transientize [empty-value x]
   (cond (nil? x) (transient empty-value)
         (instance? (type empty-value) x) (transient x)
         :else x))

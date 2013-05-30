@@ -61,7 +61,7 @@
   (assoc [this k v]
          (set! contents
                (assoc! contents k
-                       (conj! (transientize (get contents k) #{}) v)))
+                       (conj! (transientize #{} (get contents k)) v)))
          (set! altered (conj! altered k))
          this)
   (conj [this x]
