@@ -1,7 +1,7 @@
 (ns map-experiments.smart-maps
   (:require [clojure.set :as set])
   (:import [clojure.lang
-              IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
+            IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
 (defprotocol Invertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
@@ -13,19 +13,19 @@
 (defprotocol IAttributeMap
   "Protocol for a map from keys to attribute-value pairs."
   (keys-with [m a v]
-    "Returns all keys with attribute a associated with value v.")
+             "Returns all keys with attribute a associated with value v.")
   (keys-with-attr [m a]
-    "Returns all keys with attribute a.")
+                  "Returns all keys with attribute a.")
   (attr-get [m k a] [m k a not-found]
-    "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
+            "Returns the value associated with attribute a for key k. Returns nil or not-found if there is no such value.")
   (attr-assoc [m k a v]
-    "Associates attribute a with value v for key k.")
+              "Associates attribute a with value v for key k.")
   (attr-dissoc [m k a]
-    "Dissociates attribute a from key k.")
+               "Dissociates attribute a from key k.")
   (attr-remove [m a]
-    "Removes all instances of attribute a from the map.")
+               "Removes all instances of attribute a from the map.")
   (attr-rename [m old-attr new-attr]
-    "Renames old-attr to new-attr in the map."))
+               "Renames old-attr to new-attr in the map."))
 
 ; Always default to mappy printing for things which are both mappy and setty.
 (prefer-method
@@ -58,39 +58,39 @@
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
   IPersistentMap
-    (assoc [this k v]
-           (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
-    (without [this k]
-             (SetMap. metadata (dissoc contents k)))
+  (assoc [this k v]
+         (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
+  (without [this k]
+           (SetMap. metadata (dissoc contents k)))
   IPersistentCollection
-    (cons [this x]
-          (if (and (sequential? x) (= 2 (count x)))
-              (let [[k v] x]
-                (assoc this k v))
+  (cons [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc this k v))
             (throw (IllegalArgumentException.
                      "Vector arg to map conj must be a pair"))))
-    (equiv [this o]
-           (or (and (isa? (class o) SetMap)
-                    (= contents (.contents ^SetMap o)))
-               (= contents o)))
-    (empty [this] (SetMap. metadata (empty contents)))
-    (count [this] (count contents))
+  (equiv [this o]
+         (or (and (isa? (class o) SetMap)
+                  (= contents (.contents ^SetMap o)))
+             (= contents o)))
+  (empty [this] (SetMap. metadata (empty contents)))
+  (count [this] (count contents))
   IPersistentSet
-    (disjoin [this [k v]]
-             (if-let [old-v-set (get contents k)]
-                     (SetMap. metadata
-                              (if (< 1 (count old-v-set))
-                                  (assoc contents k (disj old-v-set v))
-                                  (dissoc contents k)))
-                     this))
+  (disjoin [this [k v]]
+           (if-let [old-v-set (get contents k)]
+                   (SetMap. metadata
+                            (if (< 1 (count old-v-set))
+                                (assoc contents k (disj old-v-set v))
+                                (dissoc contents k)))
+                   this))
   IObj (withMeta [this new-meta] (SetMap. new-meta contents))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
-    (containsKey [this k] (contains? contents k))
-    (entryAt     [this k] (find contents k))
+  (containsKey [this k] (contains? contents k))
+  (entryAt     [this k] (find contents k))
   ILookup
-    (valAt [this k]           (get contents k))
-    (valAt [this k not-found] (get contents k not-found))
+  (valAt [this k]           (get contents k))
+  (valAt [this k not-found] (get contents k not-found))
   Seqable (seq      [this]   (seq contents))
   IFn     (invoke   [this k] (get contents k))
   IMeta   (meta     [this]   metadata)
@@ -103,37 +103,37 @@
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
   IPersistentMap
-    (assoc [this k v]
-           (Bijection. metadata
-                       (assoc (dissoc active (get mirror v)) k v)
-                       (assoc (dissoc mirror (get active k)) v k)))
-    (without [this k] (disj this [k (get active k)]))
+  (assoc [this k v]
+         (Bijection. metadata
+                     (assoc (dissoc active (get mirror v)) k v)
+                     (assoc (dissoc mirror (get active k)) v k)))
+  (without [this k] (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this x]
-          (if (and (sequential? x) (= 2 (count x)))
-              (let [[k v] x]
-                (assoc this k v))
+  (cons [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc this k v))
             (throw (IllegalArgumentException.
                      "Vector arg to map conj must be a pair"))))
-    (equiv [this o] 
-           (or (and (isa? (class o) Bijection)
-                    (= active (.active ^Bijection o)))
-               (= active o)))
-    (count [this] (count active))
-    (empty [this] (Bijection. metadata (empty active) (empty mirror)))
+  (equiv [this o] 
+         (or (and (isa? (class o) Bijection)
+                  (= active (.active ^Bijection o)))
+             (= active o)))
+  (count [this] (count active))
+  (empty [this] (Bijection. metadata (empty active) (empty mirror)))
   IPersistentSet
-    (disjoin [this [k v]]
-             (if (and (contains? active k) (contains? mirror v))
-                 (Bijection. metadata (dissoc active k) (dissoc mirror v))
-                 this))
+  (disjoin [this [k v]]
+           (if (and (contains? active k) (contains? mirror v))
+               (Bijection. metadata (dissoc active k) (dissoc mirror v))
+               this))
   IObj (withMeta [this new-meta] (Bijection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
-    (containsKey [this k] (contains? active k))
-    (entryAt     [this k] (find active k))
+  (containsKey [this k] (contains? active k))
+  (entryAt     [this k] (find active k))
   ILookup
-    (valAt [this k]           (get active k))
-    (valAt [this k not-found] (get active k not-found))
+  (valAt [this k]           (get active k))
+  (valAt [this k not-found] (get active k not-found))
   Seqable (seq      [this]   (seq active))
   IFn     (invoke   [this k] (get active k))
   IMeta   (meta     [this]   metadata)
@@ -146,36 +146,36 @@
                     ^SetMap mirror]
   Invertible (inverse [this] (Bipartite. metadata mirror active))
   IPersistentMap
-    (assoc [this k v]
-           (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
-    (without [this k]
-             (reduce disj this (map (partial vector k) (get active k))))
+  (assoc [this k v]
+         (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
+  (without [this k]
+           (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this x]
-          (if (and (sequential? x) (= 2 (count x)))
-              (let [[k v] x]
-                (assoc this k v))
+  (cons [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc this k v))
             (throw (IllegalArgumentException.
                      "Vector arg to map conj must be a pair"))))
-    (equiv [this o]
-           (or (and (isa? (class o) Bipartite)
-                    (= active (.active ^Bipartite o)))
-               (= active o)))
-    (count [this] (count active))
-    (empty [this] (Bipartite. metadata (empty active) (empty mirror)))
+  (equiv [this o]
+         (or (and (isa? (class o) Bipartite)
+                  (= active (.active ^Bipartite o)))
+             (= active o)))
+  (count [this] (count active))
+  (empty [this] (Bipartite. metadata (empty active) (empty mirror)))
   IPersistentSet
-    (disjoin [this [k v]]
-             (if (and (contains? active k) (contains? mirror v))
-                 (Bipartite. metadata (disj active [k v]) (disj mirror [v k]))
-                 this))
+  (disjoin [this [k v]]
+           (if (and (contains? active k) (contains? mirror v))
+               (Bipartite. metadata (disj active [k v]) (disj mirror [v k]))
+               this))
   IObj (withMeta [this new-meta] (Bipartite. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
-    (containsKey [this k] (contains? active k))
-    (entryAt     [this k] (find active k))
+  (containsKey [this k] (contains? active k))
+  (entryAt     [this k] (find active k))
   ILookup
-    (valAt [this k]           (get active k))
-    (valAt [this k not-found] (get active k not-found))
+  (valAt [this k]           (get active k))
+  (valAt [this k not-found] (get active k not-found))
   Seqable (seq      [this]   (seq active))
   IFn     (invoke   [this k] (get active k))
   IMeta   (meta     [this]   metadata)
@@ -188,42 +188,42 @@
                      ^SetMap mirror]
   Invertible (inverse [this] (inverted-surjection- metadata mirror active))
   IPersistentMap
-    (assoc [this k v]
-           (Surjection. metadata
-                        (assoc active k v)
-                        (assoc
-                          (if-let [[_ old-v] (find active k)]
-                                  (disj mirror [old-v k])
-                                  mirror)
-                          v k)))
-    (without [this k] 
-             (disj this [k (get active k)]))
+  (assoc [this k v]
+         (Surjection. metadata
+                      (assoc active k v)
+                      (assoc
+                        (if-let [[_ old-v] (find active k)]
+                                (disj mirror [old-v k])
+                                mirror)
+                        v k)))
+  (without [this k] 
+           (disj this [k (get active k)]))
   IPersistentCollection
-    (cons [this x]
-          (if (and (sequential? x) (= 2 (count x)))
-              (let [[k v] x]
-                (assoc this k v))
+  (cons [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc this k v))
             (throw (IllegalArgumentException.
                      "Vector arg to map conj must be a pair"))))
-    (equiv [this o]
-           (or (and (isa? (class o) Surjection)
-                    (= active (.active ^Surjection o)))
-               (= active o)))
-    (count [this] (count active))
-    (empty [this] (Surjection. metadata (empty active) (empty mirror)))
+  (equiv [this o]
+         (or (and (isa? (class o) Surjection)
+                  (= active (.active ^Surjection o)))
+             (= active o)))
+  (count [this] (count active))
+  (empty [this] (Surjection. metadata (empty active) (empty mirror)))
   IPersistentSet
-    (disjoin [this [k v]]
-             (if (and (contains? active k) (contains? mirror v))
-                 (Surjection. metadata (dissoc active k) (disj mirror [v k]))
-                 this))
+  (disjoin [this [k v]]
+           (if (and (contains? active k) (contains? mirror v))
+               (Surjection. metadata (dissoc active k) (disj mirror [v k]))
+               this))
   IObj (withMeta [this new-meta] (Surjection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
-    (containsKey [this k] (contains? active k))
-    (entryAt     [this k] (find active k))
+  (containsKey [this k] (contains? active k))
+  (entryAt     [this k] (find active k))
   ILookup
-    (valAt [this k]           (get active k))
-    (valAt [this k not-found] (get active k not-found))
+  (valAt [this k]           (get active k))
+  (valAt [this k not-found] (get active k not-found))
   Seqable (seq      [this]   (seq active))
   IFn     (invoke   [this k] (get active k))
   IMeta   (meta     [this]   metadata)
@@ -236,42 +236,42 @@
                              ^IPersistentMap mirror]
   Invertible (inverse [this] (surjection- metadata mirror active))
   IPersistentMap
-    (assoc [this k v]
-           (InvertedSurjection. metadata
-                                (assoc
-                                  (if-let [[_ old-k] (find mirror v)]
-                                          (disj active [old-k v])
-                                          active)
-                                  k v)
-                                (assoc mirror v k)))
-    (without [this k] 
-             (reduce disj this (map (partial vector k) (get active k))))
+  (assoc [this k v]
+         (InvertedSurjection. metadata
+                              (assoc
+                                (if-let [[_ old-k] (find mirror v)]
+                                        (disj active [old-k v])
+                                        active)
+                                k v)
+                              (assoc mirror v k)))
+  (without [this k] 
+           (reduce disj this (map (partial vector k) (get active k))))
   IPersistentCollection
-    (cons [this x]
-          (if (and (sequential? x) (= 2 (count x)))
-              (let [[k v] x]
-                (assoc this k v))
-              (throw (IllegalArgumentException.
-                       "Vector arg to map conj must be a pair"))))
-    (equiv [this o]
-           (or (and (isa? (class o) InvertedSurjection)
-                    (= active (.active ^InvertedSurjection o)))
-               (= active o)))
-    (count [this] (count active))
-    (empty [this] (InvertedSurjection. metadata (empty active) (empty mirror)))
+  (cons [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
+  (equiv [this o]
+         (or (and (isa? (class o) InvertedSurjection)
+                  (= active (.active ^InvertedSurjection o)))
+             (= active o)))
+  (count [this] (count active))
+  (empty [this] (InvertedSurjection. metadata (empty active) (empty mirror)))
   IPersistentSet
-    (disjoin [this [k v]]
-             (if (and (contains? active k) (contains? mirror v))
-                 (InvertedSurjection. metadata (disj active [k v]) (dissoc mirror v))
-                 this))
+  (disjoin [this [k v]]
+           (if (and (contains? active k) (contains? mirror v))
+               (InvertedSurjection. metadata (disj active [k v]) (dissoc mirror v))
+               this))
   IObj (withMeta [this new-meta] (InvertedSurjection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
-    (containsKey [this k] (contains? active k))
-    (entryAt     [this k] (find active k))
+  (containsKey [this k] (contains? active k))
+  (entryAt     [this k] (find active k))
   ILookup
-    (valAt [this k]           (get active k))
-    (valAt [this k not-found] (get active k not-found))
+  (valAt [this k]           (get active k))
+  (valAt [this k not-found] (get active k not-found))
   Seqable (seq      [this]   (seq active))
   IFn     (invoke   [this k] (get active k))
   IMeta   (meta     [this]   metadata)
@@ -288,86 +288,86 @@
 ; It presents itself as a map where values are maps, but is also optimized for fast queries about which keys have particular attributes. The underlying implementation is *not* the same as the view presented by toString and print-method; rather, an AttributeMap is internally a bijection between keys and attributes they have, as well as a map where values are attributes and keys are surjections from keys to values (for that attribute).
 (deftype AttributeMap [metadata keys-attrs contents]
   IAttributeMap
-    (keys-with [this a v]
-               (get (inverse (get contents a)) v))
-    (keys-with-attr [this a]
-                    (get (inverse keys-attrs) a))
-    (attr-get [this k a]
-              (get (get contents a) k))
-    (attr-get [this k a not-found]
-              (get (get contents a) k not-found))
-    (attr-assoc [this k a v]
-                (AttributeMap.
-                  metadata
-                  (assoc keys-attrs k a)
-                  (assoc contents a ((fnil assoc (surjection)) (get contents a) k v))))
-    (attr-dissoc [this k a]
-                 (if-let [old-v-map (get contents a)]
-                   (AttributeMap.
-                     metadata
-                     (disj keys-attrs [k a])
-                     (if (< 1 (count old-v-map))
-                         (assoc contents a (dissoc old-v-map k))
-                         (dissoc contents a)))
-                   this))
-    (attr-remove [this a]
-                 (AttributeMap.
-                   metadata
-                   (rdissoc keys-attrs a)
-                   (dissoc contents a)))
-    (attr-rename [this old-attr new-attr]
-                 (AttributeMap.
-                   metadata
-                   (inverse
-                     (into (dissoc (inverse keys-attrs) old-attr)
-                           (map (partial vector new-attr)
-                                (get (inverse keys-attrs) old-attr))))
-                   (assoc (dissoc contents old-attr) new-attr (get contents old-attr))))
+  (keys-with [this a v]
+             (get (inverse (get contents a)) v))
+  (keys-with-attr [this a]
+                  (get (inverse keys-attrs) a))
+  (attr-get [this k a]
+            (get (get contents a) k))
+  (attr-get [this k a not-found]
+            (get (get contents a) k not-found))
+  (attr-assoc [this k a v]
+              (AttributeMap.
+                metadata
+                (assoc keys-attrs k a)
+                (assoc contents a ((fnil assoc (surjection)) (get contents a) k v))))
+  (attr-dissoc [this k a]
+               (if-let [old-v-map (get contents a)]
+                       (AttributeMap.
+                         metadata
+                         (disj keys-attrs [k a])
+                         (if (< 1 (count old-v-map))
+                             (assoc contents a (dissoc old-v-map k))
+                             (dissoc contents a)))
+                       this))
+  (attr-remove [this a]
+               (AttributeMap.
+                 metadata
+                 (rdissoc keys-attrs a)
+                 (dissoc contents a)))
+  (attr-rename [this old-attr new-attr]
+               (AttributeMap.
+                 metadata
+                 (inverse
+                   (into (dissoc (inverse keys-attrs) old-attr)
+                         (map (partial vector new-attr)
+                              (get (inverse keys-attrs) old-attr))))
+                 (assoc (dissoc contents old-attr) new-attr (get contents old-attr))))
   IPersistentMap
-    (assoc [this k a-v-map]
-           (try
-             (reduce (partial apply attr-assoc) this (map (partial cons k) a-v-map))
-             (catch Exception e
-               (throw (IllegalArgumentException.
-                        "Value argument to AttributeMap assoc must be a map of attributes and values, or a sequence which can be converted into such.")))))
-    (without [this k]
-             (AttributeMap.
-               metadata
-               (dissoc keys-attrs k)
-               (reduce #(assoc %1 %2 (dissoc (get %1 %2) k))
-                       contents
-                       (get keys-attrs k))))
+  (assoc [this k a-v-map]
+         (try
+           (reduce (partial apply attr-assoc) this (map (partial cons k) a-v-map))
+           (catch Exception e
+             (throw (IllegalArgumentException.
+                      "Value argument to AttributeMap assoc must be a map of attributes and values, or a sequence which can be converted into such.")))))
+  (without [this k]
+           (AttributeMap.
+             metadata
+             (dissoc keys-attrs k)
+             (reduce #(assoc %1 %2 (dissoc (get %1 %2) k))
+                     contents
+                     (get keys-attrs k))))
   IPersistentCollection
-    (cons [this x]
-          (cond (and (sequential? x) (= 3 (count x)))
-                  (let [[k a v] x] (attr-assoc this k a v))
-                (instance? clojure.lang.MapEntry x)
-                  (let [[k a-v-map] x] (assoc this k a-v-map))
-                (map? x)
-                  (reduce (partial apply assoc) this x)
-                :else
-                  (throw (IllegalArgumentException.
-                           "Argument to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
-    (equiv [this o]
-           (and (isa? (class o) AttributeMap)
-                (= contents (.contents ^AttributeMap o))))
-    (empty [this] (AttributeMap. metadata (empty keys-attrs) (empty contents)))
-    (count [this] (count keys-attrs))
+  (cons [this x]
+        (cond (and (sequential? x) (= 3 (count x)))
+              (let [[k a v] x] (attr-assoc this k a v))
+              (instance? clojure.lang.MapEntry x)
+              (let [[k a-v-map] x] (assoc this k a-v-map))
+              (map? x)
+              (reduce (partial apply assoc) this x)
+              :else
+              (throw (IllegalArgumentException.
+                       "Argument to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
+  (equiv [this o]
+         (and (isa? (class o) AttributeMap)
+              (= contents (.contents ^AttributeMap o))))
+  (empty [this] (AttributeMap. metadata (empty keys-attrs) (empty contents)))
+  (count [this] (count keys-attrs))
   Associative
-    (containsKey [this k] (contains? keys-attrs k))
-    (entryAt     [this k] (when (contains? this k)
-                                (clojure.lang.MapEntry. k (get this k))))
+  (containsKey [this k] (contains? keys-attrs k))
+  (entryAt     [this k] (when (contains? this k)
+                              (clojure.lang.MapEntry. k (get this k))))
   ILookup
-    (valAt [this k]
-           (let [result
-                 (into {} (map (comp (juxt key #(get (val %) k))
-                                     (partial find contents))
-                               (get keys-attrs k)))]
-           (when (seq result) result)))
-    (valAt [this k not-found]
-           (if (contains? this k)
-               (get this k)
-               not-found))
+  (valAt [this k]
+         (let [result
+               (into {} (map (comp (juxt key #(get (val %) k))
+                                   (partial find contents))
+                             (get keys-attrs k)))]
+              (when (seq result) result)))
+  (valAt [this k not-found]
+         (if (contains? this k)
+             (get this k)
+             not-found))
   Seqable (seq      [this]   (map (partial find this) (keys keys-attrs)))
   IFn     (invoke   [this k] (get this k))
   IMeta   (meta     [this]   metadata)
@@ -424,12 +424,12 @@
   ([function]
    (fn [& args]
      (when-let [result (apply function args)]
-       (if (not (seq (rest result)))
-           (first result)
-           (throw (IllegalArgumentException.
-                    (str "Violation of 'specific' constraint on function <" function ">. The function, when given argument(s) " args ", returned a collection with more than one element: " (with-out-str (pr result)) "."))))))))
+               (if (not (seq (rest result)))
+                   (first result)
+                   (throw (IllegalArgumentException.
+                            (str "Violation of 'specific' constraint on function <" function ">. The function, when given argument(s) " args ", returned a collection with more than one element: " (with-out-str (pr result)) "."))))))))
 
 (def specific-key
   "Returns nil if no keys match, a key if one key matches, or an error if more than one key matches the specification. Designed to be used when it is known that particular types of queries are guaranteed to be unique."
   (specific keys-with-all))
-   
+
