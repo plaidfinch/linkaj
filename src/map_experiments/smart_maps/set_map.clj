@@ -77,11 +77,12 @@
            (set! contents (dissoc! contents k))
            this)
   (persistent [this]
-              (SetMap. nil (persistent!
-                             (reduce #(assoc! %1 %2
-                                              (persistent! (get %1 %2)))
-                                     contents
-                                     (persistent! altered)))))
+              (let [p-altered (persistent! altered)]
+                   (SetMap. nil (persistent!
+                                  (reduce #(assoc! %1 %2
+                                                   (persistent! (get %1 %2)))
+                                          contents
+                                          p-altered)))))
   ITransientSet
   (contains [this k]
             (contains? contents k))
