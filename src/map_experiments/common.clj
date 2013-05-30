@@ -8,10 +8,19 @@
 (prefer-method print-method
   IPersistentMap IPersistentSet)
 
-(defn transientize [empty-value x]
-  (cond (nil? x) (transient empty-value)
-        (instance? (type empty-value) x) (transient x)
-        :else x))
+(defn transientize
+  "If x is nil or of the same type as empty-value, returns a transient version of x. Otherwise, (e.g. if x is already transient) returns x."
+  ([empty-value x]
+   (cond (nil? x) (transient empty-value)
+         (instance? (type empty-value) x) (transient x)
+         :else x)))
+
+(defn persistentize
+  "If x is nil or of the same type as empty-value, returns a persistent version of x. Otherwise, (e.g. if x is already persistent) returns x."
+  ([empty-value x]
+   (cond (nil? x) (persistent empty-value)
+         (instance? (type empty-value) x) (persistent x)
+         :else x)))
 
 (defn rdissoc
   "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
