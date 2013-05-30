@@ -77,7 +77,7 @@
                   (set! mirror (assoc! (disj! mirror [old-v k]) v k))))
          this)
   (conj [this x]
-        (if (= 2 (count x))
+        (if (and (sequential? x) (= 2 (count x)))
             (let [[k v] x]
                  (.assoc ^TransientSurjection this k v))
             (throw (IllegalArgumentException.
