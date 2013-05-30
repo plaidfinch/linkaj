@@ -1,5 +1,6 @@
 (ns map-experiments.smart-maps.set-map
-  (:require [map-experiments.smart-maps.protocol :refer :all])
+  (:require [map-experiments.common              :refer :all]
+            [map-experiments.smart-maps.protocol :refer :all])
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator PersistentHashSet$TransientHashSet]))
 
@@ -60,11 +61,7 @@
   (assoc [this k v]
          (set! contents
                (assoc! contents k
-                       (conj! (#(cond (nil? %) (transient #{})
-                                      (instance? clojure.lang.PersistentHashSet %) (transient %)
-                                      :else %)
-                                 (get contents k))
-                              v)))
+                       (conj! (transientize (get contents k) #{}) v)))
          (set! altered (conj! altered k))
          this)
   (conj [this x]
@@ -88,7 +85,7 @@
            (if-let [old-v-set (get contents k)]
                    (set! contents
                          (if (< 1 (count old-v-set))
-                             (assoc! this k v)
+                             (assoc! this k (disj! old-v-set v))
                              (dissoc! contents k))))
            this))
 

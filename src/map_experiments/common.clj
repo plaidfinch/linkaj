@@ -8,6 +8,11 @@
 (prefer-method print-method
   IPersistentMap IPersistentSet)
 
+(defn transientize [x empty-value]
+  (cond (nil? x) (transient empty-value)
+        (instance? (type empty-value) x) (transient x)
+        :else x))
+
 (defn rdissoc
   "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
   ([coll & vs]
