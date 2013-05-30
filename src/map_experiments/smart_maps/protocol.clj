@@ -4,6 +4,10 @@
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))
 
+(defprotocol TransientInvertible
+  "Protocol for a transient invertible map."
+  (inverse! [m] "Returns the map inverted, destructively."))
+
 ; Extend the Invertible protocol to nil, for reasons of internal use.
 (extend-protocol Invertible nil (inverse [m] nil))
 
