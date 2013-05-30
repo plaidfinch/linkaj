@@ -436,7 +436,7 @@
   (equiv [this o]
          (and (isa? (class o) GraphNode)
               (= id (.id ^GraphNode o))
-              (= graph (.graph ^DirectedGraph o))))
+              (= graph (.graph ^GraphNode o))))
   (empty [this] (with-meta {} metadata))
   IObj (withMeta [this new-meta]
                  (GraphNode. new-meta graph id))
