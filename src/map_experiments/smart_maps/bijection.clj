@@ -81,7 +81,8 @@
               (Bijection. nil (persistent! active) (persistent! mirror)))
   ITransientSet
   (disjoin [this [k v]]
-           (if (and (get active k) (get mirror v))
+           (if (not (some #(= ::not-found %)
+                          [(get active k ::not-found) (get mirror v ::not-found)]))
                (do (set! active (dissoc! active k))
                    (set! mirror (dissoc! mirror v))))
            this))
