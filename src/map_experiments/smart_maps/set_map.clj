@@ -3,6 +3,8 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]))
 
+(declare transient-set-map)
+
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
   IPersistentMap
@@ -33,6 +35,8 @@
                                 (assoc contents k (disj old-v-set v))
                                 (dissoc contents k)))
                    this))
+  IEditableCollection
+  (asTransient [this] (transient-set-map this))
   IObj (withMeta [this new-meta] (SetMap. new-meta contents))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -47,8 +51,41 @@
   Object  (toString [this]   (str contents))
   MapEquivalence)
 
+(deftype TransientSetMap [^{:unsynchronized-mutable true} contents]
+  ITransientMap
+  (count [this] (count contents))
+  (valAt [this k]           (get contents k))
+  (valAt [this k not-found] (get contents k not-found))
+  (assoc [this k v]
+         (set! contents (assoc! contents k ((fnil conj #{}) (get contents k) v)))
+         this)
+  (conj [this x]
+        (if (and (sequential? x) (= 2 (count x)))
+            (let [[k v] x]
+                 (assoc! this k v))
+            (throw (IllegalArgumentException.
+                     "Vector arg to map conj must be a pair"))))
+  (without [this k]
+           (set! contents (dissoc! contents k))
+           this)
+  (persistent [this]
+              (SetMap. nil (persistent! contents)))
+  ITransientSet
+  (contains [this k]
+            (contains? contents k))
+  (disjoin [this [k v]]
+           (if-let [old-v-set (get contents k)]
+                   (set! contents
+                         (if (< 1 (count old-v-set))
+                             (assoc! contents k (disj old-v-set v))
+                             (dissoc! contents k))))
+           this))
+
 (defn set-map
   "Creates a SetMap, which is a smart map that overrides assoc so that every value is a set of all values which have been associated with it; that is, assoc is non-overwriting."
   ([] (SetMap. nil (hash-map)))
   ([& keyvals]
    (apply assoc (set-map) keyvals)))
+
+(defn- transient-set-map [^SetMap x]
+  (TransientSetMap. (transient (.contents x))))
