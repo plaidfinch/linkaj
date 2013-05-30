@@ -51,13 +51,21 @@
   Object  (toString [this]   (str contents))
   MapEquivalence)
 
-(deftype TransientSetMap [^{:unsynchronized-mutable true} contents]
+(deftype TransientSetMap [^{:unsynchronized-mutable true} contents
+                          ^{:unsynchronized-mutable true} altered]
   ITransientMap
   (count [this] (count contents))
   (valAt [this k]           (get contents k))
   (valAt [this k not-found] (get contents k not-found))
   (assoc [this k v]
-         (set! contents (assoc! contents k ((fnil conj #{}) (get contents k) v)))
+         (set! contents
+               (assoc! contents k
+                       (conj! (#(cond (nil? %) (transient #{})
+                                      (instance? clojure.lang.PersistentHashSet$TransientHashSet %) %
+                                      :else (transient %))
+                                 (get contents k))
+                              v)))
+         (set! altered (conj! altered k))
          this)
   (conj [this x]
         (if (and (sequential? x) (= 2 (count x)))
@@ -69,7 +77,11 @@
            (set! contents (dissoc! contents k))
            this)
   (persistent [this]
-              (SetMap. nil (persistent! contents)))
+              (SetMap. nil (persistent!
+                             (reduce #(assoc! %1 %2
+                                              (persistent! (get %1 %2)))
+                                     contents
+                                     (persistent! altered)))))
   ITransientSet
   (contains [this k]
             (contains? contents k))
@@ -77,7 +89,7 @@
            (if-let [old-v-set (get contents k)]
                    (set! contents
                          (if (< 1 (count old-v-set))
-                             (assoc! contents k (disj old-v-set v))
+                             (assoc! this k v)
                              (dissoc! contents k))))
            this))
 
@@ -88,4 +100,4 @@
    (apply assoc (set-map) keyvals)))
 
 (defn- transient-set-map [^SetMap x]
-  (TransientSetMap. (transient (.contents x))))
+  (TransientSetMap. (transient (.contents x)) (transient #{})))
