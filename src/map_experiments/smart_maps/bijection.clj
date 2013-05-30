@@ -1,7 +1,7 @@
 (ns map-experiments.smart-maps.bijection
   (:require [map-experiments.smart-maps.protocol :refer :all])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
+            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]))
 
 ; Invertible map that preserves a bijective property amongst its elements.
 (deftype Bijection [metadata
@@ -15,7 +15,7 @@
                      (assoc (dissoc mirror (get active k)) v k)))
   (without [this k] (disj this [k (get active k)]))
   (iterator [this]
-    (clojure.lang.SeqIterator. (seq this)))
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

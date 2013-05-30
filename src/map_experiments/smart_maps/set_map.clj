@@ -1,7 +1,7 @@
 (ns map-experiments.smart-maps.set-map
   (:require [map-experiments.smart-maps.protocol :refer :all])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
+            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]))
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
@@ -11,7 +11,7 @@
   (without [this k]
            (SetMap. metadata (dissoc contents k)))
   (iterator [this]
-    (clojure.lang.SeqIterator. (seq this)))
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

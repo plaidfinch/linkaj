@@ -2,7 +2,7 @@
   (:require [map-experiments.smart-maps.protocol :refer :all]
             [map-experiments.smart-maps.set-map :refer :all])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable]
+            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
            [map_experiments.smart_maps.set_map SetMap]))
 
 ; Dual (invertible) SetMap with no restrictions on associations; that is to say, a bipartite graph.
@@ -16,7 +16,7 @@
   (without [this k]
            (reduce disj this (map (partial vector k) (get active k))))
   (iterator [this]
-    (clojure.lang.SeqIterator. (seq this)))
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

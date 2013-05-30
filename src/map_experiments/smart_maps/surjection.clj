@@ -2,7 +2,7 @@
   (:require [map-experiments.smart-maps.protocol :refer :all]
             [map-experiments.smart-maps.set-map :refer :all])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable]
+            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
            [map_experiments.smart_maps.set_map SetMap]))
 
 ; Forward declaration of coroutined constructors for surjection types.
@@ -25,7 +25,7 @@
   (without [this k] 
            (disj this [k (get active k)]))
   (iterator [this]
-    (clojure.lang.SeqIterator. (seq this)))
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

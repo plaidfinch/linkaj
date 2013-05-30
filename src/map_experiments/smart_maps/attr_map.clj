@@ -5,7 +5,7 @@
             [map-experiments.smart-maps.surjection :refer :all]
             [clojure.set :as set])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable]
+            IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
            [map_experiments.smart_maps.set_map SetMap]))
 
 ; An AttributeMap is a mapping from keys to attribute-value pairs.
@@ -62,7 +62,7 @@
                      contents
                      (get keys-attrs k))))
   (iterator [this]
-    (clojure.lang.SeqIterator. (seq this)))
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (cond (and (sequential? x) (= 3 (count x)))
@@ -82,7 +82,7 @@
   Associative
   (containsKey [this k] (contains? keys-attrs k))
   (entryAt     [this k] (when (contains? this k)
-                              (clojure.lang.MapEntry. k (get this k))))
+                              (MapEntry. k (get this k))))
   ILookup
   (valAt [this k]
          (let [result
