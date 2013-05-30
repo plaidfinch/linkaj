@@ -96,10 +96,6 @@
                                                       (keys-with nodes-map a v)))))))))))
   (node-in? [this o]
             (and (node? o)
-                 ; The below rigorous check breaks any method which wants to reduce a graph across a set of nodes. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
-                 ; a) You can use the API in a sensible way! It should be rather difficult to accidentally cross nodes and edges between two separate graphs, unless you're trying to do so.
-                 ; b) You can uncomment this line (and the similar one in edge-in?) to enable these integrity checks, at the cost of losing the use of every plural mutator method like those at the bottom of the file.
-                 ;(= this (.graph ^GraphNode o))
                  (contains? nodes-set (id o))))
   (add-node* [this attributes]
              (cond (or (key-overlap? attributes relations-map)
@@ -207,10 +203,6 @@
                                                       (keys-with edges-map a v)))))))))))
   (edge-in? [this o]
             (and (edge? o)
-                 ; The below rigorous check breaks any method which wants to reduce a graph across a set of edges. If you're really worried about making sure nodes and edges don't cross-influence different graphs, I have two pieces of advice:
-                 ; a) You can use the API in a sensible way! It should be rather difficult to accidentally cross nodes and edges between two separate graphs, unless you're trying to do so.
-                 ; b) You can uncomment this line (and the similar one in node-in?) to enable these integrity checks, at the cost of losing the use of every plural mutator method like those at the bottom of the file.
-                 ;(= this (.graph ^GraphEdge o))
                  (contains? edges-map (id o))))
   (add-edge* [this attributes]
              ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
@@ -375,10 +367,11 @@
   IPersistentCollection
   (equiv [this o] 
          (and (isa? (class o) DirectedGraph)
-              (= nodes-set      (.nodes-set      ^DirectedGraph o))
-              (= nodes-map      (.nodes-map      ^DirectedGraph o))
-              (= edges-map      (.edges-map      ^DirectedGraph o))
-              (= relations-map  (.relations-map  ^DirectedGraph o))))
+              (= nodes-set       (.nodes-set       ^DirectedGraph o))
+              (= nodes-map       (.nodes-map       ^DirectedGraph o))
+              (= edges-map       (.edges-map       ^DirectedGraph o))
+              (= edges-relations (.edges-relations ^DirectedGraph o))
+              (= relations-map   (.relations-map   ^DirectedGraph o))))
   (empty [this]
          (DirectedGraph.
            (empty nodes-set)
