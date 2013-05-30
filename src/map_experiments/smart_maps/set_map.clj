@@ -84,10 +84,9 @@
   ITransientSet
   (disjoin [this [k v]]
            (if-let [old-v-set (get contents k)]
-                   (set! contents
-                         (if (< 1 (count old-v-set))
-                             (assoc! this k (disj! old-v-set v))
-                             (dissoc! contents k))))
+                   (if (< 1 (count old-v-set))
+                       (set! contents (assoc! contents k (disj! old-v-set v)))
+                       (set! contents (dissoc! contents k))))
            this))
 
 (defn- transient-set-map- [^SetMap x]

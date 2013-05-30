@@ -3,7 +3,7 @@
             [map-experiments.smart-maps.set-map :refer :all])
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
-           [map_experiments.smart_maps.set_map SetMap]))
+           [map_experiments.smart_maps.set_map SetMap TransientSetMap]))
 
 ; Forward declaration of coroutined constructors for surjection types.
 (declare inverted-surjection- surjection- transient-surjection- transient-inverted-surjection-)
@@ -61,7 +61,8 @@
   MapEquivalence)
 
 (deftype TransientSurjection [^{:unsynchronized-mutable true} active
-                              ^{:unsynchronized-mutable true} mirror]
+                              ^{:unsynchronized-mutable true
+                                :tag TransientSetMap} mirror]
   TransientInvertible
   (inverse! [this]
             (transient-inverted-surjection- mirror active))
@@ -71,16 +72,14 @@
   (valAt [this k not-found] (get active k not-found))
   (assoc [this k v]
          (set! active (assoc! active k v))
-         (set! mirror (assoc! (let [old-v (get active k ::not-found)]
-                                   (if (not= ::not-found old-v)
-                                       (disj! mirror [old-v k])
-                                       mirror))
-                              v k))
+         (let [old-v (get active k ::not-found)]
+              (if (not= ::not-found old-v)
+                  (set! mirror (assoc! (disj! mirror [old-v k]) v k))))
          this)
   (conj [this x]
-        (if (and (sequential? x) (= 2 (count x)))
+        (if (= 2 (count x))
             (let [[k v] x]
-                 (assoc! this k v))
+                 (.assoc ^TransientSurjection this k v))
             (throw (IllegalArgumentException.
                      "Vector arg to map conj must be a pair"))))
   (without [this k]
@@ -145,7 +144,8 @@
   Object  (toString [this]   (str active))
   MapEquivalence)
 
-(deftype TransientInvertedSurjection [^{:unsynchronized-mutable true} active
+(deftype TransientInvertedSurjection [^{:unsynchronized-mutable true
+                                        :tag TransientSetMap} active
                                       ^{:unsynchronized-mutable true} mirror]
   TransientInvertible
   (inverse! [this]
@@ -155,12 +155,10 @@
   (valAt [this k] (get active k))
   (valAt [this k not-found] (get active k not-found))
   (assoc [this k v]
-         (set! active (assoc! (let [old-k (get mirror v ::not-found)]
-                                   (if (not= ::not-found old-k)
-                                       (disj! active [old-k v])
-                                       active))
-                              k v))
-         (set! mirror (assoc! active k v))
+         (let [old-k (get mirror v ::not-found)]
+              (if (not= ::not-found old-k)
+                  (set! active (assoc! (disj! active [old-k v]) k v))))
+         (set! mirror (assoc! mirror v k))
          this)
   (conj [this x]
         (if (and (sequential? x) (= 2 (count x)))
@@ -176,8 +174,8 @@
   (disjoin [this [k v]]
            (if (not (some #(= ::not-found %)
                           [(get active k ::not-found) (get mirror v ::not-found)]))
-               (do (set! active (dissoc! active k))
-                   (set! mirror (disj! mirror [v k]))))
+               (do (set! active (disj! active [k v]))
+                   (set! mirror (dissoc! mirror v))))
            this))
 
 ; Private factory functions for InvertedSurjection and Surjection. Required because of limitations on coroutined type definitions.
