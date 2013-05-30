@@ -3,7 +3,7 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]))
 
-(declare transient-bijection)
+(declare transient-bijection-)
 
 ; Invertible map that preserves a bijective property amongst its elements.
 (deftype Bijection [metadata
@@ -37,7 +37,7 @@
                (Bijection. metadata (dissoc active k) (dissoc mirror v))
                this))
   IEditableCollection
-  (asTransient [this] (transient-bijection this))
+  (asTransient [this] (transient-bijection- this))
   IObj (withMeta [this new-meta] (Bijection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -86,11 +86,11 @@
                    (set! mirror (dissoc! mirror v))))
            this))
 
+(defn- transient-bijection- [^Bijection x]
+  (TransientBijection. (transient (.active x)) (transient (.mirror x))))
+
 (defn bijection
   "Creates a Bijection, which is an invertible map that preserves a bijective (1-to-1) mapping. That is, both keys and values are guaranteed to be unique; assoc overwrites any extant keys or values, also removing their associated pairings."
   ([] (Bijection. nil (hash-map) (hash-map)))
   ([& keyvals]
    (apply assoc (bijection) keyvals)))
-
-(defn- transient-bijection [^Bijection x]
-  (TransientBijection. (transient (.active x)) (transient (.mirror x))))

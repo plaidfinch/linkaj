@@ -4,7 +4,7 @@
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator PersistentHashSet$TransientHashSet]))
 
-(declare transient-set-map)
+(declare transient-set-map-)
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
@@ -37,7 +37,7 @@
                                 (dissoc contents k)))
                    this))
   IEditableCollection
-  (asTransient [this] (transient-set-map this))
+  (asTransient [this] (transient-set-map- this))
   IObj (withMeta [this new-meta] (SetMap. new-meta contents))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -90,11 +90,11 @@
                              (dissoc! contents k))))
            this))
 
+(defn- transient-set-map- [^SetMap x]
+  (TransientSetMap. (transient (.contents x)) (transient #{})))
+
 (defn set-map
   "Creates a SetMap, which is a smart map that overrides assoc so that every value is a set of all values which have been associated with it; that is, assoc is non-overwriting."
   ([] (SetMap. nil (hash-map)))
   ([& keyvals]
    (apply assoc (set-map) keyvals)))
-
-(defn- transient-set-map [^SetMap x]
-  (TransientSetMap. (transient (.contents x)) (transient #{})))
