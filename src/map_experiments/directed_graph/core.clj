@@ -1,8 +1,13 @@
 (ns map-experiments.directed-graph.core
-  (:require [map-experiments.directed-graph.protocol :refer :all]
-            [map-experiments.directed-graph.macro    :refer :all]
-            [map-experiments.smart-maps              :refer :all]
-            [clojure.set                             :refer :all])
+  (:require [clojure.set                             :refer :all]
+            [map-experiments.common                  :refer :all]
+            [map-experiments.smart-maps.protocol     :refer :all]
+            [map-experiments.smart-maps.bijection    :refer :all]
+            [map-experiments.smart-maps.surjection   :refer :all]
+            [map-experiments.smart-maps.bipartite    :refer :all]
+            [map-experiments.smart-maps.attr-map     :refer :all]
+            [map-experiments.directed-graph.protocol :refer :all]
+            [map-experiments.directed-graph.macro    :refer :all])
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
 
