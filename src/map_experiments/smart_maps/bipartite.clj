@@ -15,6 +15,8 @@
          (Bipartite. metadata (assoc active k v) (assoc mirror v k)))
   (without [this k]
            (reduce disj this (map (partial vector k) (get active k))))
+  (iterator [this]
+    (clojure.lang.SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

@@ -10,6 +10,8 @@
          (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))
   (without [this k]
            (SetMap. metadata (dissoc contents k)))
+  (iterator [this]
+    (clojure.lang.SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (if (and (sequential? x) (= 2 (count x)))

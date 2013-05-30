@@ -61,6 +61,8 @@
              (reduce #(assoc %1 %2 (dissoc (get %1 %2) k))
                      contents
                      (get keys-attrs k))))
+  (iterator [this]
+    (clojure.lang.SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (cond (and (sequential? x) (= 3 (count x)))
