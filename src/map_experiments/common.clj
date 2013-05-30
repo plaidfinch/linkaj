@@ -15,11 +15,11 @@
          (instance? (type empty-value) x) (transient x)
          :else x)))
 
-(defn persistentize
+(defn persistentize!
   "If x is nil or of the same type as empty-value, returns a persistent version of x. Otherwise, (e.g. if x is already persistent) returns x."
   ([empty-value x]
-   (cond (nil? x) (persistent empty-value)
-         (instance? (type empty-value) x) (persistent x)
+   (cond (nil? x) (persistent! empty-value)
+         (instance? (type empty-value) x) (persistent! x)
          :else x)))
 
 (defn rdissoc

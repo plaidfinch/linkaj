@@ -62,7 +62,7 @@
          (set! contents
                (assoc! contents k
                        (conj! (transientize #{} (get contents k)) v)))
-         (set! altered (conj! altered k))
+         (set! altered (conj! altered k)) ; keep track of which values of contents have been converted into transient sets, so we can convert them back to persistent sets when the SetMap is converted back to persistent
          this)
   (conj [this x]
         (if (and (sequential? x) (= 2 (count x)))
@@ -75,6 +75,7 @@
            this)
   (persistent [this]
               (let [p-altered (persistent! altered)]
+                   ; convert all values which were turned transient back to persistent sets
                    (SetMap. nil (persistent!
                                   (reduce #(assoc! %1 %2
                                                    (persistent! (get %1 %2)))
