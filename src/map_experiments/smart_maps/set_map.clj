@@ -84,8 +84,6 @@
                                           contents
                                           p-altered)))))
   ITransientSet
-  (contains [this k]
-            (contains? contents k))
   (disjoin [this [k v]]
            (if-let [old-v-set (get contents k)]
                    (set! contents
