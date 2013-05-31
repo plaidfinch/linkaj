@@ -185,44 +185,40 @@
                  (contains? edges-map (id o))))
   (add-edge* [this attributes]
              ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
-             (let [[relations rest-attrs] (parse-relations attributes relations-set)]
-                  (if (cond (not (seq edge-id-seq))
-                            (throw (IllegalStateException.
-                                     "Empty internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
-                            (contains? edges-map (first edge-id-seq))
-                            (throw (IllegalStateException.
-                                     "Encountered duplicate in internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is non-repeating"))
-                            (< (count relations) 2)
-                            (throw (IllegalArgumentException.
-                                     "An edge cannot be created without a relation to exactly 2 existing nodes"))
-                            (= (count relations) 2)
-                            (let [[r1 r2] (keys relations)]
-                                 (cond (not (= r1 (opposite relations-map r2)))
-                                       (throw (IllegalArgumentException.
-                                                "Relations for edges must be opposites"))
-                                       (not (and (node-in? this (relations r1))
-                                                 (node-in? this (relations r2))))
-                                       (throw (IllegalArgumentException.
-                                                "Edges must connect existing nodes"))
-                                       :else true))
-                            :else (throw (IllegalArgumentException.
-                                           "An edge cannot have relations to greater than two nodes")))
-                      (let [edge-key
-                            (first edge-id-seq)
-                            new-edges-map
-                            (assoc edges-map edge-key
-                                   (merge rest-attrs
-                                          (zipmap (keys relations)
-                                                  (map id (vals relations)))))]
-                           (#(constraints-fn
-                               :add this (graph-edge % edge-key) %)
-                              (DirectedGraph.
-                                nodes-set nodes-map
-                                (assoc edges-relations edge-key (set (keys relations)))
-                                new-edges-map
-                                node-id-seq
-                                (rest edge-id-seq)
-                                relations-set relations-map constraints-fn metadata))))))
+             (let [[relations rest-attrs] (parse-relations attributes relations-set)
+                   edge-key (first edge-id-seq)
+                   new-edges-map (assoc edges-map edge-key
+                                        (merge rest-attrs
+                                               (zipmap (keys relations)
+                                                       (map id (vals relations)))))]
+                  (cond (not (seq edge-id-seq))
+                        (throw (IllegalStateException.
+                                 "Empty internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
+                        (contains? edges-map (first edge-id-seq))
+                        (throw (IllegalStateException.
+                                 "Encountered duplicate in internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is non-repeating"))
+                        (or (< (count relations) 2) (> (count relations) 2))
+                        (throw (IllegalArgumentException.
+                                 "An edge cannot be created without a relation to exactly 2 existing nodes"))
+                        (= (count relations) 2)
+                        (let [[r1 r2] (keys relations)]
+                             (cond (not (= r1 (opposite relations-map r2)))
+                                   (throw (IllegalArgumentException.
+                                            "Relations for edges must be opposites"))
+                                   (not (and (node-in? this (relations r1))
+                                             (node-in? this (relations r2))))
+                                   (throw (IllegalArgumentException.
+                                            "Edges must connect existing nodes"))
+                                   :else
+                                   (#(constraints-fn
+                                       :add this (graph-edge % edge-key) %)
+                                      (DirectedGraph.
+                                        nodes-set nodes-map
+                                        (assoc edges-relations edge-key #{r1 r2})
+                                        new-edges-map
+                                        node-id-seq
+                                        (rest edge-id-seq)
+                                        relations-set relations-map constraints-fn metadata)))))))
   (remove-edge [this e]
                (if (not (edge-in? this e))
                    (throw (IllegalArgumentException.
