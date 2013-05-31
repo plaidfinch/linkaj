@@ -24,7 +24,9 @@
 
 (defn setify
   "Ensures that x is a set, but does not do extra work if it already is."
-  ([x] (if (set? x) x (set x))))
+  ([x] (cond (set? x) x
+             (sequential? x) (set x)
+             :else #{x})))
 
 (defn sequentialize
   "Ensures that x is a sequence (by putting it in a 1-length list if not)."
