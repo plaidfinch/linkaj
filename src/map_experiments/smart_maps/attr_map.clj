@@ -73,7 +73,7 @@
               (reduce (partial apply assoc) this x)
               :else
               (throw (IllegalArgumentException.
-                       "Argument to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
+                       "Arg to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
   (equiv [this o]
          (and (isa? (class o) AttributeMap)
               (= contents (.contents ^AttributeMap o))))
