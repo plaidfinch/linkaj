@@ -52,11 +52,8 @@
 ; Parse-relations takes a list of attributes and a relations-map and returns a 2-tuple of maps: the relations contained in the map, and all other attributes in the map. It's private as there's little to no use for it outside the type definition.
 
 (defn- parse-relations
-  ([attributes relations-map]
-   (let [relations
-         (select-keys attributes
-                      (concat (keys relations-map)
-                              (keys (inverse relations-map))))
+  ([attributes relations-set]
+   (let [relations  (select-keys attributes relations-set)
          rest-attrs (apply dissoc attributes (keys relations))]
         [relations rest-attrs])))
 
@@ -68,6 +65,7 @@
                         edges-map
                         node-id-seq
                         edge-id-seq
+                        relations-set
                         relations-map
                         constraints-fn
                         metadata]
@@ -108,8 +106,7 @@
             (and (node? o)
                  (contains? nodes-set (id o))))
   (add-node* [this attributes]
-             (cond (or (key-overlap? attributes relations-map)
-                       (key-overlap? attributes (inverse relations-map)))
+             (cond (some relations-set (keys attributes))
                    (throw (IllegalArgumentException.
                             "Attributes may not be identical to existing relations"))
                    (not (seq node-id-seq))
@@ -128,7 +125,7 @@
                              new-nodes-map
                              edges-relations edges-map
                              (rest node-id-seq)
-                             edge-id-seq relations-map constraints-fn metadata)))))
+                             edge-id-seq relations-set relations-map constraints-fn metadata)))))
   (remove-node [this n]
                (if (not (node-in? this n))
                    (throw (IllegalArgumentException.
@@ -149,15 +146,14 @@
                                  (if (node-in? this n)
                                      (cons node-key node-id-seq)
                                      node-id-seq)
-                                 edge-id-seq relations-map constraints-fn metadata))))))
+                                 edge-id-seq relations-set relations-map constraints-fn metadata))))))
   (assoc-node* [this n attributes]
                (if (not (node-in? this n))
                    (throw (IllegalArgumentException.
                             "Cannot assoc to node whose origin is in another graph."))
                    (let [node-key (id n)
                          new-nodes-map (assoc nodes-map node-key attributes)]
-                        (cond (or (key-overlap? attributes relations-map)
-                                  (key-overlap? attributes (inverse relations-map)))
+                        (cond (some relations-set (keys attributes))
                               (throw (IllegalArgumentException.
                                        "Attributes may not be existing relations"))
                               (not (node-in? this n))
@@ -169,7 +165,7 @@
                                  (DirectedGraph.
                                    nodes-set
                                    new-nodes-map
-                                   edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
+                                   edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map constraints-fn metadata))))))
   (dissoc-node* [this n attribute-keys]
                 (if (not (node-in? this n))
                     (throw (IllegalArgumentException.
@@ -182,7 +178,7 @@
                             (DirectedGraph.
                               nodes-set
                               new-nodes-map
-                              edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+                              edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map constraints-fn metadata)))))
   
   ; Methods acting on edges:
   (edges* [this]
@@ -220,7 +216,7 @@
                  (contains? edges-map (id o))))
   (add-edge* [this attributes]
              ; Validating that edge has exactly two relations, and they point to existing nodes in the graph
-             (let [[relations rest-attrs] (parse-relations attributes relations-map)]
+             (let [[relations rest-attrs] (parse-relations attributes relations-set)]
                   (if (cond (not (seq edge-id-seq))
                             (throw (IllegalStateException.
                                      "Empty internal edge id sequence; check custom specifications for this parameter to ensure that sequence specified is infinite"))
@@ -257,7 +253,7 @@
                                 new-edges-map
                                 node-id-seq
                                 (rest edge-id-seq)
-                                relations-map constraints-fn metadata))))))
+                                relations-set relations-map constraints-fn metadata))))))
   (remove-edge [this e]
                (if (not (edge-in? this e))
                    (throw (IllegalArgumentException.
@@ -274,7 +270,7 @@
                              (if (edge-in? this edge-key)
                                  (cons edge-key edge-id-seq)
                                  edge-id-seq)
-                             relations-map constraints-fn metadata)))))
+                             relations-set relations-map constraints-fn metadata)))))
   (assoc-edge* [this e attributes]
                ; Massive validation step to check that the new attributes don't violate the conditions of being a properly formed edge...
                (let [edge-key (id e)
@@ -283,7 +279,7 @@
                           (throw (IllegalArgumentException.
                                    "Cannot assoc on edge with origin in another graph."))
                           (let [[relations rest-attrs]
-                                (parse-relations attributes relations-map)
+                                (parse-relations attributes relations-set)
                                 [r1 r2] (keys relations)]
                                (case (count relations)
                                      0 true
@@ -312,7 +308,7 @@
                              (DirectedGraph.
                                nodes-set nodes-map edges-relations
                                new-edges-map
-                               node-id-seq edge-id-seq relations-map constraints-fn metadata)))))
+                               node-id-seq edge-id-seq relations-set relations-map constraints-fn metadata)))))
   (dissoc-edge* [this e attribute-keys]
                 ; Validate that there are no relations being dissoced
                 (if (not (edge-in? this e))
@@ -324,7 +320,7 @@
                           [relations rest-attrs]
                           (parse-relations
                             (into {} (map vector attribute-keys (repeat nil)))
-                            relations-map)]
+                            relations-set)]
                          (if (not= 0 (count relations))
                              (throw (IllegalArgumentException.
                                       "An edge cannot be disconnected from a node without being connected to another node"))
@@ -333,7 +329,7 @@
                                 (DirectedGraph.
                                   nodes-set nodes-map edges-relations
                                   new-edges-map
-                                  node-id-seq edge-id-seq relations-map constraints-fn metadata))))))
+                                  node-id-seq edge-id-seq relations-set relations-map constraints-fn metadata))))))
   
   Relational
   (relations [this] (set (map set relations-map)))
@@ -347,6 +343,7 @@
   (add-relation [this r1 r2]
                 (DirectedGraph.
                   nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq
+                  (conj relations-set r1 r2)
                   (assoc relations-map r1 r2)
                   constraints-fn metadata))
   (remove-relation [this r1 r2]
@@ -355,7 +352,7 @@
                             (nil? (keys-with-attr edges-map r2)))
                        (DirectedGraph.
                          nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq
-                         (dissoc (rdissoc relations-map r1) r1)
+                         (disj relations-set r1 r2) (dissoc (rdissoc relations-map r1) r1)
                          constraints-fn metadata)
                        (throw (IllegalArgumentException.
                                 "Relation could not be removed from graph for one of the following reasons: a) the two relations given are not each others' opposites; b) there are existing edges along this relation"))))
@@ -363,14 +360,14 @@
   Constrained
   (add-constraint [this new-constraint]
                   (DirectedGraph.
-                    nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map
+                    nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
                     (fn [action x old-graph new-graph]
                       (new-constraint
                         action x old-graph (constraints-fn action x old-graph new-graph)))
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
-                       nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map
+                       nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
                        (fn [action x old-graph new-graph] new-graph)
                        metadata))
   (verify-constraints [this]
@@ -394,6 +391,7 @@
            (empty edges-map)
            (starting-node-seq)
            (starting-edge-seq)
+           relations-set
            relations-map
            constraints-fn
            metadata))
@@ -414,7 +412,7 @@
   IObj
   (withMeta [this new-meta]
             (DirectedGraph.
-              nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-map constraints-fn
+              nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map constraints-fn
               new-meta)))
 
 ; Defining GraphNodes and GraphEdges, which are emitted from the graph in response to queries:
@@ -555,6 +553,7 @@
                      (attr-map)
                      (starting-node-seq)
                      (starting-edge-seq)
+                     (hash-set)
                      (bijection)
                      (fn [action x old-graph new-graph] new-graph)
                      (hash-map))
