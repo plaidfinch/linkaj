@@ -495,16 +495,16 @@
   MapEquivalence)
 
 ; Private constructors for graph nodes and edges. You shouldn't use these; graph nodes and edges will be generated automatically from queries and should not be manually constructed by client code.
-(defn- graph-node [graph id]
+(defn graph-node [graph id]
   (GraphNode. nil graph id))
-(defn- graph-edge [graph id]
+(defn graph-edge [graph id]
   (GraphEdge. nil graph id))
 
 ; Default configuration for internal node and edge seqs:
 (defn- starting-node-seq []
-  (repeatedly #(gensym "NODE-")))
+  (iterate (comp inc inc) 0))
 (defn- starting-edge-seq []
-  (repeatedly #(gensym "EDGE-")))
+  (iterate (comp inc inc) 1))
 
 ; Factory function for digraphs:
 (defn digraph
