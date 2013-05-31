@@ -22,6 +22,14 @@
          (instance? (type empty-value) x) (persistent! x)
          :else x)))
 
+(defn setify
+  "Ensures that x is a set, but does not do extra work if it already is."
+  ([x] (if (set? x) x (set x))))
+
+(defn sequentialize
+  "Ensures that x is a sequence (by putting it in a 1-length list if not)."
+  ([x] (if (sequential? x) x (list x))))
+
 (defn rdissoc
   "Dissociates every key mapped to any value in vs. Works only with things implementing the Invertible protocol."
   ([coll & vs]

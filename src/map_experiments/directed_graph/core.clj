@@ -41,7 +41,7 @@
   ([m]
    (when (seq m)
          (if-let [[k x] (first m)]
-                 (let [vs (if (sequential? x) x [x])]
+                 (let [vs (sequentialize x)]
                       (if (seq (dissoc m k))
                           (for [v vs
                                 r (map-cross (dissoc m k))]
@@ -81,25 +81,29 @@
   (nodes* [this query]
           (if (not (seq query))
               (nodes* this)
-              (seq 
-                (map (partial graph-node this)
-                     (apply intersection
-                            (for [[a x] query]
-                                 (let [vs (if (sequential? x) x [x])]
-                                      (apply (comp set union)
-                                             (if (relation-in? this a)
-                                                 (for [v vs]
-                                                      (cond (nil? v) nil
-                                                            (node? v)
-                                                            (map #(attr-get edges-map % (opposite relations-map a))
-                                                                 (keys-with edges-map a (id v)))
-                                                            (edge? v)
-                                                            [(attr-get edges-map (id v) (opposite relations-map a))]
-                                                            :else
-                                                            (throw (IllegalArgumentException.
-                                                                     "Nodes can only be related to nodes, and by extension, to edges."))))
-                                                 (for [v vs]
-                                                      (keys-with nodes-map a v)))))))))))
+              (let [nodes-lists
+                    (for [[a x] query]
+                         (let [vs (sequentialize x)]
+                              (apply union
+                                     (if (relation-in? this a)
+                                         (for [v vs]
+                                              (cond (nil? v) nil
+                                                    (node? v)
+                                                    (map #(attr-get edges-map %
+                                                                    (opposite relations-map a))
+                                                         (keys-with edges-map a (id v)))
+                                                    (edge? v)
+                                                    [(attr-get edges-map (id v)
+                                                               (opposite relations-map a))]
+                                                    :else
+                                                    (throw (IllegalArgumentException.
+                                                             "Nodes can only be related to nodes, and by extension, to edges."))))
+                                         (for [v vs]
+                                              (keys-with nodes-map a v))))))]
+                   (map (partial graph-node this)
+                        (if (< 1 (count nodes-lists))
+                            (seq (apply intersection (map setify nodes-lists)))
+                            (first nodes-lists))))))
   (node-in? [this o]
             (and (node? o)
                  (contains? nodes-set (id o))))
@@ -184,30 +188,33 @@
   (edges* [this]
           (map (partial graph-edge this)
                (when (< 0 (count edges-map))
-                     (apply hash-set (keys edges-map)))))
+                     (keys edges-map))))
   (edges* [this query]
           (if (not (seq query))
               (edges* this)
-              (seq
-                (map (partial graph-edge this)
-                     (apply intersection
-                            (for [[a x] query]
-                                 (let [vs (if (sequential? x) x [x])]
-                                      (apply (comp set union)
-                                             (if (relation-in? this a)
-                                                 (for [v vs]
-                                                      (cond (nil? v) nil
-                                                            (node? v)
-                                                            (keys-with edges-map a (id v))
-                                                            (edge? v)
-                                                            (keys-with
-                                                              edges-map a
-                                                              (attr-get edges-map (id v) (opposite relations-map a)))
-                                                            :else
-                                                            (throw (IllegalArgumentException.
-                                                                     "Edges can only be related to nodes, and by extension, to edges."))))
-                                                 (for [v vs]
-                                                      (keys-with edges-map a v)))))))))))
+              (let [edges-lists
+                    (for [[a x] query]
+                         (let [vs (sequentialize x)]
+                              (apply union
+                                     (if (relation-in? this a)
+                                         (for [v vs]
+                                              (cond (nil? v) nil
+                                                    (node? v)
+                                                    (keys-with edges-map a (id v))
+                                                    (edge? v)
+                                                    (keys-with
+                                                      edges-map a
+                                                      (attr-get edges-map (id v)
+                                                                (opposite relations-map a)))
+                                                    :else
+                                                    (throw (IllegalArgumentException.
+                                                             "Edges can only be related to nodes, and by extension, to edges."))))
+                                         (for [v vs]
+                                              (keys-with edges-map a v))))))]
+                   (map (partial graph-edge this)
+                        (if (< 1 (count edges-lists))
+                            (seq (apply intersection (map setify edges-lists)))
+                            (first edges-lists))))))
   (edge-in? [this o]
             (and (edge? o)
                  (contains? edges-map (id o))))
@@ -634,7 +641,7 @@
 ; Plural operators for edges:
 
 (defn add-edges
-  "Adds all possible nodes matching attributes (format like query) to the graph."
+  "Adds all possible edges matching attributes (format like query) to the graph."
   ([graph & {:as attributes}]
    (reduce add-edge* graph (map-cross attributes))))
 
