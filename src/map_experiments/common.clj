@@ -48,14 +48,13 @@
   "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences). If any key is not a sequence, it is treated as if it is a sequence of one item."
   ([m]
    (when (seq m)
-         (if-let [[k x] (first m)]
-                 (let [vs (sequentialize x)]
-                      (if (seq (dissoc m k))
-                          (for [v vs
-                                r (map-cross (dissoc m k))]
-                               ((fnil conj {}) r [k v]))
-                          (for [v vs]
-                               (hash-map k v))))))))
+         (if-let [[k vs] (first m)]
+                 (if (seq (dissoc m k))
+                     (for [v (sequentialize vs)
+                           r (map-cross (dissoc m k))]
+                          ((fnil assoc {}) r k v))
+                     (for [v (sequentialize vs)]
+                          (hash-map k v)))))))
 
 (defn specific
   "Wraps a function returning a collection so that it will return nil for an empty collection, the single element contained for a singleton collection, and will throw an error for a collection with more than one element."
