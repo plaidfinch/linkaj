@@ -46,17 +46,9 @@
 
 (defn map-cross
   "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences). If any key is not a sequence, it is treated as if it is a sequence of one item."
-  ([m]
-   (when (seq m)
-         (if-let [[ks vs] (first m)]
-                 (if (seq (dissoc m ks))
-                     (for [k (sequentialize ks)
-                           v (sequentialize vs)
-                           rest-map (map-cross (dissoc m k))]
-                          ((fnil assoc {}) rest-map k v))
-                     (for [k (sequentialize ks)
-                           v (sequentialize vs)]
-                          (hash-map k v)))))))
+  ([m] (when-let [[ks vs] (seq (map sequentialize (first m)))]
+                 (for [k ks, v vs, r (sequentialize (map-cross (dissoc m ks)))]
+                      ((fnil assoc {}) r k v)))))
 
 (defn specific
   "Wraps a function returning a collection so that it will return nil for an empty collection, the single element contained for a singleton collection, and will throw an error for a collection with more than one element."
