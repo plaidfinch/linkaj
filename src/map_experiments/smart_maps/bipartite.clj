@@ -1,6 +1,6 @@
 (ns map-experiments.smart-maps.bipartite
   (:require [map-experiments.smart-maps.protocol :refer :all]
-            [map-experiments.smart-maps.set-map :refer :all])
+            [map-experiments.smart-maps.set-map  :refer :all])
   (:import [clojure.lang
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
            [map_experiments.smart_maps.set_map SetMap]))

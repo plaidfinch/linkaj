@@ -1,7 +1,7 @@
 (ns map-experiments.smart-maps.attr-map
-  (:require [map-experiments.common :refer :all]
-            [map-experiments.smart-maps.protocol :refer :all]
-            [map-experiments.smart-maps.bipartite :refer :all]
+  (:require [map-experiments.common                :refer :all]
+            [map-experiments.smart-maps.protocol   :refer :all]
+            [map-experiments.smart-maps.bipartite  :refer :all]
             [map-experiments.smart-maps.surjection :refer :all]
             [clojure.set :as set])
   (:import [clojure.lang
