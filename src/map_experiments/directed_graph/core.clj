@@ -89,7 +89,8 @@
                                       (apply (comp set union)
                                              (if (relation-in? this a)
                                                  (for [v vs]
-                                                      (cond (node? v)
+                                                      (cond (nil? v) nil
+                                                            (node? v)
                                                             (map #(attr-get edges-map % (opposite relations-map a))
                                                                  (keys-with edges-map a (id v)))
                                                             (edge? v)
@@ -195,7 +196,8 @@
                                       (apply (comp set union)
                                              (if (relation-in? this a)
                                                  (for [v vs]
-                                                      (cond (node? v)
+                                                      (cond (nil? v) nil
+                                                            (node? v)
                                                             (keys-with edges-map a (id v))
                                                             (edge? v)
                                                             (keys-with
