@@ -35,6 +35,28 @@
   ([coll & vs]
    (inverse (apply dissoc (inverse coll) vs))))
 
+(defn opposite
+  "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
+  ([bij x]
+   (opposite bij x nil))
+  ([bij x not-found]
+   (if-let [result (or (find bij x) (find (inverse bij) x))]
+           (val result)
+           not-found)))
+
+(defn map-cross
+  "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences). If any key is not a sequence, it is treated as if it is a sequence of one item."
+  ([m]
+   (when (seq m)
+         (if-let [[k x] (first m)]
+                 (let [vs (sequentialize x)]
+                      (if (seq (dissoc m k))
+                          (for [v vs
+                                r (map-cross (dissoc m k))]
+                               ((fnil conj {}) r [k v]))
+                          (for [v vs]
+                               (hash-map k v))))))))
+
 (defn specific
   "Wraps a function returning a collection so that it will return nil for an empty collection, the single element contained for a singleton collection, and will throw an error for a collection with more than one element."
   ([function]
