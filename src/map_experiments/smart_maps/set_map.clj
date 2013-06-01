@@ -72,6 +72,7 @@
                      "Vector arg to map conj must be a pair"))))
   (without [this k]
            (set! contents (dissoc! contents k))
+           (set! altered (disj! altered k))
            this)
   (persistent [this]
               (let [p-altered (persistent! altered)]
@@ -83,10 +84,12 @@
                                           p-altered)))))
   ITransientSet
   (disjoin [this [k v]]
-           (if-let [old-v-set (get contents k)]
+           (if-let [old-v-set (transientize #{} (get contents k))]
                    (if (< 1 (count old-v-set))
-                       (set! contents (assoc! contents k (disj! old-v-set v)))
-                       (set! contents (dissoc! contents k))))
+                       (do (set! contents (assoc! contents k (disj! old-v-set v)))
+                           (set! altered (conj! altered k)))
+                       (do (set! contents (dissoc! contents k))
+                           (set! altered (disj! altered k)))))
            this))
 
 (defn- transient-set-map- [^SetMap x]
