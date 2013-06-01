@@ -37,6 +37,11 @@
   ([coll & vs]
    (inverse (apply dissoc (inverse coll) vs))))
 
+(defn rdissoc!
+  "Destructively dissociates every key mapped to any value in vs. Works only with things implementing the TransientInvertible protocol."
+  ([coll & vs]
+   (inverse! (apply dissoc! (inverse! coll) vs))))
+
 (defn opposite
   "Returns the opposite value of x in the given bijection (whichever side the opposite is on) and nil if neither side contains the item, or not-found if specified."
   ([bij x]

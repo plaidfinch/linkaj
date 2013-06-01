@@ -8,6 +8,8 @@
             IPersistentMap IPersistentSet IPersistentCollection IEditableCollection ITransientMap ITransientSet ILookup IFn IObj IMeta Associative MapEquivalence Seqable MapEntry SeqIterator]
            [map_experiments.smart_maps.set_map SetMap]))
 
+; (declare transient-attr-map-)
+
 ; An AttributeMap is a mapping from keys to attribute-value pairs.
 ; It presents itself as a map where values are maps, but is also optimized for fast queries about which keys have particular attributes. The underlying implementation is *not* the same as the view presented by toString and print-method; rather, an AttributeMap is internally a bijection between keys and attributes they have, as well as a map where values are attributes and keys are surjections from keys to values (for that attribute).
 (deftype AttributeMap [metadata keys-attrs contents]
@@ -79,6 +81,8 @@
               (= contents (.contents ^AttributeMap o))))
   (empty [this] (AttributeMap. metadata (empty keys-attrs) (empty contents)))
   (count [this] (count keys-attrs))
+  ; IEditableCollection
+  ; (asTransient [this] (transient-attr-map- (transient keys-attrs) (transient contents)))
   Associative
   (containsKey [this k] (contains? keys-attrs k))
   (entryAt     [this k] (when (contains? this k)
@@ -100,6 +104,80 @@
   IObj    (withMeta [this new-meta] (AttributeMap. new-meta keys-attrs contents))
   Object  (toString [this]   (str (into {} (seq this))))
   MapEquivalence)
+
+; (def ^:private empty-surj (surjection))
+
+; (deftype TransientAttributeMap [^{:unsynchronized-mutable true} keys-attrs
+;                                 ^{:unsynchronized-mutable true} contents
+;                                 ^{:unsynchronized-mutable true} altered]
+;   IAttributeMap
+;   (keys-with [this a v]
+;              (get (inverse (get contents a)) v))
+;   (keys-with-attr [this a]
+;                   (get (inverse keys-attrs) a))
+;   (attr-get [this k a]
+;             (get (get contents a) k))
+;   (attr-get [this k a not-found]
+;             (get (get contents a) k not-found))
+;   ITransientAttributeMap
+;   (attr-assoc! [this k a v]
+;                (set! keys-attrs
+;                      (assoc! keys-attrs k a))
+;                (set! contents
+;                      (assoc! contents a (assoc! (transientize empty-surj (get contents a)) k v)))
+;                (set! altered
+;                      (conj! altered a))
+;                this)
+;   (attr-dissoc! [this k a]
+;                 (if-let [old-v-map (transientize empty-surj (get contents a))]
+;                         (do (set! keys-attrs (disj! keys-attrs [k a]))
+;                             (if (< 1 (count old-v-map))
+;                                 (do (set! contents (assoc! contents a (dissoc! old-v-map k)))
+;                                     (set! altered (conj! altered a)))
+;                                 (do (set! contents (dissoc! contents a))
+;                                     (set! altered (disj! altered a))))))
+;                 this)
+;   (attr-remove! [this a]
+;                 (set! keys-attrs (rdissoc! keys-attrs a))
+;                 (set! contents (dissoc! contents a))
+;                 (set! altered (disj! altered a)))
+;   ITransientMap
+;   ; (valAt [this k] (get active k))
+;   ; (valAt [this k not-found] (get active k not-found))
+;   (assoc [this k a-v-map]
+;          (try
+;            (reduce (partial apply attr-assoc!) this (map (partial cons k) a-v-map))
+;            (catch Exception e
+;              (throw (IllegalArgumentException.
+;                       "Value argument to AttributeMap assoc must be a map of attributes and values, or a sequence which can be converted into such.")))))
+;   (conj [this x]
+;         (cond (and (sequential? x) (= 3 (count x)))
+;               (let [[k a v] x] (attr-assoc! this k a v))
+;               (instance? clojure.lang.MapEntry x)
+;               (let [[k a-v-map] x] (assoc! this k a-v-map))
+;               (map? x)
+;               (reduce (partial apply assoc!) this x)
+;               :else
+;               (throw (IllegalArgumentException.
+;                        "Arg to AttributeMap conj must be a map, a map entry, or a 3-tuple."))))
+;   ; (without [this k]
+;   ;          (set! keys-attrs (dissoc! keys-attrs k))
+;   ;          (reduce #(assoc! %1 %2 (dissoc (get %1 %2) k))
+;   ;                    contents
+;   ;                    (get keys-attrs k))))
+;   (persistent [this]
+;               (let [p-altered (persistent! altered)]
+;                    ; convert all values which were turned transient back to persistent sets
+;                    (AttributeMap. nil
+;                                   (persistent! keys-attrs)
+;                                   (persistent!
+;                                     (reduce #(assoc! %1 %2
+;                                                      (persistent! (get %1 %2)))
+;                                             contents
+;                                             p-altered))))))
+
+; (defn- transient-attr-map- [keys-attrs contents]
+;   (TransientAttributeMap. keys-attrs contents (transient #{})))
 
 (defn attr-map
   "Creates an AttributeMap, which is a map where all values are maps between attributes and values. Supports fast lookup of keys based on attributes and values."

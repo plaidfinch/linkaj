@@ -27,3 +27,12 @@
                "Removes all instances of attribute a from the map.")
   (attr-rename [m old-attr new-attr]
                "Renames old-attr to new-attr in the map."))
+
+(defprotocol ITransientAttributeMap
+  "Protocol for a transient Attribute Map."
+  (attr-assoc! [m k a v]
+               "Associates attribute a with value v for key k, destructively.")
+  (attr-dissoc! [m k a]
+                "Dissociates attribute a from key k, destructively.")
+  (attr-remove! [m a]
+                "Removes all instances of attribute a from the map, destructively."))
