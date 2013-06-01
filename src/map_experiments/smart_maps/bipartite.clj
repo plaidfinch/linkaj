@@ -38,7 +38,7 @@
                (Bipartite. metadata (disj active [k v]) (disj mirror [v k]))
                this))
   IEditableCollection
-  (asTransient [this] (transient-bipartite- this))
+  (asTransient [this] (transient-bipartite- (transient active) (transient mirror)))
   IObj (withMeta [this new-meta] (Bipartite. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -55,6 +55,9 @@
 
 (deftype TransientBipartite [^{:unsynchronized-mutable true} active
                              ^{:unsynchronized-mutable true} mirror]
+  Invertible
+  (inverse [this]
+           (transient-bipartite- mirror active))
   TransientInvertible
   (inverse! [this]
             (let [a active
@@ -88,8 +91,8 @@
                    (set! mirror (disj! mirror [v k]))))
            this))
 
-(defn- transient-bipartite- [^Bipartite x]
-  (TransientBipartite. (transient (.active x)) (transient (.mirror x))))
+(defn- transient-bipartite- [active mirror]
+  (TransientBipartite. active mirror))
 
 (defn bipartite
   "Creates a Bipartite, which is an invertible map which maintains a mapping from keys to sets of values, and values to sets of keys -- that is, essentially an invertible SetMap. So named because it is a bipartite graph in semantic structure."

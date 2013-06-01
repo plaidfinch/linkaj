@@ -37,7 +37,7 @@
                (Bijection. metadata (dissoc active k) (dissoc mirror v))
                this))
   IEditableCollection
-  (asTransient [this] (transient-bijection- this))
+  (asTransient [this] (transient-bijection- (transient active) (transient mirror)))
   IObj (withMeta [this new-meta] (Bijection. new-meta active mirror))
   ; Boilerplate map-like object implementation code. Common to all the mirrored maps, and also to SetMap (although SetMap uses differing field names).
   Associative
@@ -54,6 +54,9 @@
 
 (deftype TransientBijection [^{:unsynchronized-mutable true} active
                              ^{:unsynchronized-mutable true} mirror]
+  Invertible
+  (inverse [this]
+           (transient-bijection- mirror active))
   TransientInvertible
   (inverse! [this]
             (let [a active
@@ -87,8 +90,8 @@
                    (set! mirror (dissoc! mirror v))))
            this))
 
-(defn- transient-bijection- [^Bijection x]
-  (TransientBijection. (transient (.active x)) (transient (.mirror x))))
+(defn- transient-bijection- [active mirror]
+  (TransientBijection. active mirror))
 
 (defn bijection
   "Creates a Bijection, which is an invertible map that preserves a bijective (1-to-1) mapping. That is, both keys and values are guaranteed to be unique; assoc overwrites any extant keys or values, also removing their associated pairings."

@@ -63,6 +63,9 @@
 (deftype TransientSurjection [^{:unsynchronized-mutable true} active
                               ^{:unsynchronized-mutable true
                                 :tag TransientSetMap} mirror]
+  Invertible
+  (inverse [this]
+           (transient-inverted-surjection- mirror active))
   TransientInvertible
   (inverse! [this]
             (transient-inverted-surjection- mirror active))
@@ -147,6 +150,9 @@
 (deftype TransientInvertedSurjection [^{:unsynchronized-mutable true
                                         :tag TransientSetMap} active
                                       ^{:unsynchronized-mutable true} mirror]
+  Invertible
+  (inverse [this]
+           (transient-surjection- mirror active))
   TransientInvertible
   (inverse! [this]
             (transient-surjection- mirror active))
