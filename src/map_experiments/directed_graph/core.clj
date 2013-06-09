@@ -9,7 +9,7 @@
             [map-experiments.directed-graph.protocol :refer :all]
             [map-experiments.directed-graph.macro    :refer :all])
   (:import [clojure.lang
-            IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable]))
+            IPersistentMap IPersistentSet IPersistentCollection ILookup IFn IObj IMeta Associative MapEquivalence Seqable SeqIterator]))
 
 (declare
   edges-touching
@@ -400,6 +400,8 @@
            (with-meta
              (dissoc (make-node-map graph id) k)
              metadata))
+  (iterator [this]
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (with-meta
@@ -456,6 +458,8 @@
            (with-meta
              (dissoc (make-edge-map graph id) k)
              metadata))
+  (iterator [this]
+    (SeqIterator. (seq this)))
   IPersistentCollection
   (cons [this x]
         (with-meta
