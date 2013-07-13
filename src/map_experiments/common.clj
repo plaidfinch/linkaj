@@ -71,5 +71,5 @@
                (if (not (seq (rest result)))
                    (first result)
                    (throw (IllegalArgumentException.
-                            (str "Violation of 'specific' constraint on function <" function ">. The function, when given argument(s) " args ", returned a collection with more than one element" #_": " #_(with-out-str (pr result)) "."))))))))
+                            (str "Violation of 'specific' constraint on function <" function ">. The function" #_", when given argument(s) " #_args #_"," " returned a collection with more than one element" #_": " #_(with-out-str (pr result)) "."))))))))
 
