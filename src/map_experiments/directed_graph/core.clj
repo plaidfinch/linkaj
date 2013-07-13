@@ -89,7 +89,11 @@
                    (let [node-key (first node-id-seq)
                          new-nodes-map (assoc nodes-map node-key attributes)]
                         (#(constraints-fn
-                            :add (graph-node % node-key) this %)
+                            :node :add
+                            (graph-node this node-key)
+                            (graph-node % node-key)
+                            this
+                            %)
                            (DirectedGraph.
                              (conj nodes-set node-key)
                              new-nodes-map
@@ -108,7 +112,11 @@
                                  (remove-node new-graph
                                               (graph-node new-graph (id n))))
                             (#(constraints-fn
-                                :remove (graph-node % node-key) this %)
+                                :node :remove
+                                (graph-node this node-key)
+                                (graph-node % node-key)
+                                this
+                                %)
                                (DirectedGraph.
                                  (disj nodes-set node-key)
                                  new-nodes-map
@@ -131,7 +139,11 @@
                                        "Node must exist before assoc-ing onto it; use add-node to create a new node with attributes"))
                               :else
                               (#(constraints-fn
-                                  :assoc (graph-node % node-key) this %)
+                                  :node :assoc
+                                  (graph-node this node-key)
+                                  (graph-node % node-key)
+                                  this
+                                  %)
                                  (DirectedGraph.
                                    nodes-set
                                    new-nodes-map
@@ -144,7 +156,11 @@
                           new-nodes-map (reduce #(attr-dissoc %1 node-key %2)
                                                 nodes-map attribute-keys)]
                          (#(constraints-fn
-                             :dissoc (graph-node % node-key) this %)
+                             :node :dissoc
+                             (graph-node this node-key)
+                             (graph-node % node-key)
+                             this
+                             %)
                             (DirectedGraph.
                               nodes-set
                               new-nodes-map
@@ -211,7 +227,11 @@
                                             "Edges must connect existing nodes"))
                                    :else
                                    (#(constraints-fn
-                                       :add (graph-edge % edge-key) this %)
+                                       :edge :add
+                                       (graph-edge this edge-key)
+                                       (graph-edge % edge-key)
+                                       this
+                                       %)
                                       (DirectedGraph.
                                         nodes-set nodes-map
                                         (assoc edges-relations edge-key #{r1 r2})
@@ -226,7 +246,11 @@
                    (let [edge-key (id e)
                          new-edges-map (dissoc edges-map edge-key)]
                         (#(constraints-fn
-                            :remove (graph-edge % edge-key) this %)
+                            :edge :remove
+                            (graph-edge this edge-key)
+                            (graph-edge % edge-key)
+                            this
+                            %)
                            (DirectedGraph.
                              nodes-set nodes-map
                              (dissoc edges-relations edge-key)
@@ -269,7 +293,11 @@
                                      (throw (IllegalArgumentException.
                                               "Edges must relate to exactly 2 nodes"))))
                           (#(constraints-fn
-                              :assoc (graph-edge % edge-key) this %)
+                              :edge :assoc
+                              (graph-edge this edge-key)
+                              (graph-edge % edge-key)
+                              this
+                              %)
                              (DirectedGraph.
                                nodes-set nodes-map edges-relations
                                new-edges-map
@@ -290,7 +318,11 @@
                              (throw (IllegalArgumentException.
                                       "An edge cannot be disconnected from a node without being connected to another node"))
                              (#(constraints-fn
-                                 :dissoc (graph-edge % edge-key) this %)
+                                 :edge :dissoc
+                                 (graph-edge this edge-key)
+                                 (graph-edge % edge-key)
+                                 this
+                                 %)
                                 (DirectedGraph.
                                   nodes-set nodes-map edges-relations
                                   new-edges-map
@@ -326,14 +358,17 @@
   (add-constraint [this new-constraint]
                   (DirectedGraph.
                     nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
-                    (fn [action x old-graph new-graph]
+                    (fn [element action old-piece new-piece old-graph new-graph]
                       (new-constraint
-                        action x old-graph (constraints-fn action x old-graph new-graph)))
+                        element action old-piece new-piece old-graph
+                        (constraints-fn
+                          element action old-piece new-piece old-graph new-graph)))
                     metadata))
   (reset-constraints [this]
                      (DirectedGraph.
                        nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
-                       (fn [action x old-graph new-graph] new-graph)
+                       (fn [element action old-piece new-piece old-graph new-graph]
+                         new-graph)
                        metadata))
   (verify-constraints [this]
                       (reduce constraints-fn
@@ -500,9 +535,11 @@
 
 ; Private constructors for graph nodes and edges. You shouldn't use these; graph nodes and edges will be generated automatically from queries and should not be manually constructed by client code.
 (defn graph-node [graph id]
-  (GraphNode. nil graph id))
+  (let [n (GraphNode. nil graph id)]
+    (when (node-in? graph n) n)))
 (defn graph-edge [graph id]
-  (GraphEdge. nil graph id))
+  (let [e (GraphEdge. nil graph id)]
+    (when (edge-in? graph e) e)))
 
 ; Default configuration for internal node and edge seqs:
 (defn- starting-node-seq []
@@ -524,7 +561,8 @@
                      (starting-edge-seq)
                      (hash-set)
                      (bijection)
-                     (fn [action x old-graph new-graph] new-graph)
+                     (fn [element action old-piece new-piece old-graph new-graph]
+                       new-graph)
                      (hash-map))
                    relations)
            constraints)))
