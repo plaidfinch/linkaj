@@ -533,11 +533,11 @@
   IMeta (meta [this] metadata)
   MapEquivalence)
 
-; Private constructors for graph nodes and edges. You shouldn't use these; graph nodes and edges will be generated automatically from queries and should not be manually constructed by client code.
-(defn graph-node [graph id]
+; Private constructors for graph nodes and edges. You shouldn't use these; graph nodes and edges will be generated automatically from queries and should not be manually constructed by client code. If an id does not exist in the graph, these return nil.
+(defn- graph-node [graph id]
   (let [n (GraphNode. nil graph id)]
     (when (node-in? graph n) n)))
-(defn graph-edge [graph id]
+(defn- graph-edge [graph id]
   (let [e (GraphEdge. nil graph id)]
     (when (edge-in? graph e) e)))
 
