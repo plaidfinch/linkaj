@@ -18,7 +18,8 @@
   graph-node graph-edge
   nodes edges
   node? edge?
-  relation)
+  relation
+  identity-constraint)
 
 ; Parse-relations takes a list of attributes and a relations-map and returns a 2-tuple of maps: the relations contained in the map, and all other attributes in the map. It's private as there's little to no use for it outside the type definition.
 
@@ -367,8 +368,7 @@
   (reset-constraints [this]
                      (DirectedGraph.
                        nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
-                       (fn [element action old-piece new-piece old-graph new-graph]
-                         new-graph)
+                       identity-constraint
                        metadata))
   (verify-constraints [this]
                       (reduce constraints-fn
@@ -547,6 +547,11 @@
 (defn- starting-edge-seq []
   (iterate (comp inc inc) 1))
 
+; The identity constraint
+(defn identity-constraint
+  [element action old-piece new-piece old-graph new-graph]
+  new-graph)
+
 ; Factory function for digraphs:
 (defn digraph
   ([& {:keys [relations constraints]}]
@@ -561,8 +566,7 @@
                      (starting-edge-seq)
                      (hash-set)
                      (bijection)
-                     (fn [element action old-piece new-piece old-graph new-graph]
-                       new-graph)
+                     identity-constraint
                      (hash-map))
                    relations)
            constraints)))
