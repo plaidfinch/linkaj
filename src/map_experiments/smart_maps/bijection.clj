@@ -98,3 +98,16 @@
   ([] (Bijection. nil (hash-map) (hash-map)))
   ([& keyvals]
    (apply assoc (bijection) keyvals)))
+
+; (defn sorted-bijection-by
+;   "Creates a bijection which is sorted by the given comparison functions for keys and values."
+;   ([key-compare val-compare]
+;    (Bijection. nil (sorted-map-by key-compare) (sorted-map-by val-compare)))
+;   ([key-compare val-compare & keyvals]
+;    (apply assoc (sorted-bijection-by key-compare val-compare) keyvals)))
+
+; (defn sorted-bijection
+;   "Creates a bijection which is sorted using default comparator."
+;   ([] (Bijection. nil (sorted-map) (sorted-map)))
+;   ([& keyvals]
+;    (apply assoc (sorted-bijection) keyvals)))
