@@ -1,5 +1,9 @@
 (ns map-experiments.smart-maps.protocol)
 
+(defprotocol ISmartMap
+  "Protocol allowing for O(1) conversion of a smart map into a regular map."
+  (plain [m] "Returns a plain map corresponding to the smart map given."))
+
 (defprotocol Invertible
   "Protocol for a map which can be inverted, preferably in O(1) time."
   (inverse [m] "Returns an invertible map inverted."))

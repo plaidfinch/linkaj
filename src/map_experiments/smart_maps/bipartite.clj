@@ -12,6 +12,7 @@
                     ^SetMap active
                     ^SetMap mirror]
   Invertible (inverse [this] (Bipartite. metadata mirror active))
+  ISmartMap (plain [this] (plain active))
   IPersistentMap
   (assoc [this k v]
          (Bipartite. metadata (assoc active k v) (assoc mirror v k)))

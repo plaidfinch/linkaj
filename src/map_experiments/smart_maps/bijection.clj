@@ -10,6 +10,7 @@
                     ^IPersistentMap active
                     ^IPersistentMap mirror]
   Invertible (inverse [this] (Bijection. metadata mirror active))
+  ISmartMap (plain [this] active)
   IPersistentMap
   (assoc [this k v]
          (Bijection. metadata

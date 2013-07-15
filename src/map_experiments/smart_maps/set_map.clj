@@ -8,6 +8,8 @@
 
 ; A SetMap is like a regular map, but forces keys to be sets, and overrides assoc so that it augments the set at that key rather than replacing the value. It's used as a building block for the later constructs.
 (deftype SetMap [metadata contents]
+  ISmartMap
+  (plain [this] contents)
   IPersistentMap
   (assoc [this k v]
          (SetMap. metadata (assoc contents k ((fnil conj #{}) (get contents k) v))))

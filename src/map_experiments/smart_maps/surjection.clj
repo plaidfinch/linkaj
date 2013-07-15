@@ -13,6 +13,7 @@
                      ^IPersistentMap active
                      ^SetMap mirror]
   Invertible (inverse [this] (inverted-surjection- metadata mirror active))
+  ISmartMap (plain [this] active)
   IPersistentMap
   (assoc [this k v]
          (Surjection. metadata
@@ -102,6 +103,7 @@
                              ^SetMap active
                              ^IPersistentMap mirror]
   Invertible (inverse [this] (surjection- metadata mirror active))
+  ISmartMap (plain [this] (plain active))
   IPersistentMap
   (assoc [this k v]
          (InvertedSurjection. metadata
