@@ -1,6 +1,6 @@
 (ns map-experiments.directed-graph.macro)
 
-; Special threading macro graph-> to allow automatic context for queries and threading through multiple operations to boot.
+; Special threading macro to allow automatic context for queries and threading through multiple operations to boot.
 
 ; Quasi-macros used for changing threading inside the -#> form:
 (declare -#| -#-)
@@ -9,7 +9,7 @@
 (def skip-threading-symb
   (symbol "-#-"))
 
-; Graph-thread-insert does the work of the traversal for the graph-> macro.
+; Graph-thread-insert does the work of the traversal for the -#> macro.
 (defmulti graph-thread-insert
   (fn [form symb] (class form)))
 
@@ -58,7 +58,7 @@
   form)
 
 (defmacro -#>
-  "Threads a graph through a series of computations, like ->, except the graph is also recursively inserted as the first argument to every graph-related function in any form. This establishes a local context so that queries like (node {:foo true}) need not reference the graph, even nested inside maps and vectors for other queries."
+  "Threads a graph through a series of computations, like ->, except the graph is also recursively inserted as the first argument to every function in any form. This establishes a local context so that queries like (node :foo true) need not reference the graph, even nested inside maps and vectors for other queries."
   ([x] x)
   ([x form]
    (if (seq? form)
