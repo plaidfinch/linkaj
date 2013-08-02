@@ -7,8 +7,14 @@
   [n x coll]
   (concat (take n coll) [x] (drop n coll)))
 
+; We want to use this before it's defined:
+(declare declare-graph-fn)
+
 ; Quasi-macros used for changing threading inside the -#> form:
-(declare -#| -#-)
+(declare
+  -#| -#- -#+ -#>)
+(def threading-symb
+  (symbol "-#>"))
 (def stop-threading-symb
   (symbol "-#|"))
 (def skip-threading-symb
@@ -30,6 +36,8 @@
           rest-form-stop (rest form)]
          (if (symbol? function)
              (cond (= function 'quote) form
+                   (= (resolve function) (ns-resolve *ns* threading-symb))
+                   `(~function ~symb ~@rest-form-stop)
                    (= (resolve function) (ns-resolve *ns* stop-threading-symb))
                    `(do ~@rest-form-stop)
                    (= (resolve function) (ns-resolve *ns* skip-threading-symb))
@@ -78,6 +86,8 @@
                   ~(graph-thread-insert form let-symb)))
        (list form x)))
   ([x form & more] `(-#> (-#> ~x ~form) ~@more)))
+
+(alter-meta! (resolve '-#>) #(conj % {::thread-position-fn (constantly 0)}))
 
 (defmacro defgraphfn
   "Defines a new graph function by automatically noting that the graph is the first argument. For more complex insertion behavior, use declare-graph-fn."
