@@ -87,6 +87,7 @@
        (list form x)))
   ([x form & more] `(-#> (-#> ~x ~form) ~@more)))
 
+; Register -#> as a graph function... may be unnecessary.
 (alter-meta! (resolve '-#>) #(conj % {::thread-position-fn (constantly 0)}))
 
 (defmacro defgraphfn
