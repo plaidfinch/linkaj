@@ -56,6 +56,6 @@
 ; All of the functions listed below are functions with a graph as their first argument; as such, they participate in the -#> macro and are auto-threaded.
 (declare-graph-fns
   relations related-in? relation-in? add-relation remove-relation
-  add-constraint reset-constraints verify-constraints constraints
+  add-constraint reset-constraints constraints
   nodes* node-in? add-node* remove-node assoc-node* dissoc-node*
   edges* edge-in? add-edge* remove-edge assoc-edge* dissoc-edge*)
