@@ -370,10 +370,6 @@
                        nodes-set nodes-map edges-relations edges-map node-id-seq edge-id-seq relations-set relations-map
                        identity-constraint
                        metadata))
-  (verify-constraints [this]
-                      (reduce constraints-fn
-                              this
-                              (concat (nodes this) (edges this))))
   (constraints [this] constraints-fn)
   
   IPersistentCollection
