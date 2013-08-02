@@ -83,9 +83,6 @@
        (list form x)))
   ([x form & more] `(-#> (-#> ~x ~form) ~@more)))
 
-; Register -#> as a graph function... may be unnecessary.
-(alter-meta! (resolve '-#>) #(conj % {::thread-position-fn (constantly 0)}))
-
 (defmacro defgraphfn
   "Defines a new graph function by automatically noting that the graph is the first argument. For more complex insertion behavior, use declare-graph-fn."
   [name & decls]
@@ -109,5 +106,5 @@
   `(do ~@(map (fn [f] (list `declare-graph-fn f `(constantly 0))) functions)))
 
 ; Register two regular threading macros as graph functions, so that they can be used to ensure threading and do regular threading, in the graph context.
-(alter-meta! (resolve '->)  #(conj % {::thread-position-fn (constantly 0)}))
-(alter-meta! (resolve '->>) #(conj % {::thread-position-fn (constantly 0)}))
+(declare-graph-fn ->  (constantly 0))
+(declare-graph-fn ->> (constantly 0))
