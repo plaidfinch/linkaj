@@ -19,8 +19,6 @@
   (symbol "-#|"))
 (def skip-threading-symb
   (symbol "-#-"))
-(def ensure-threading-symb
-  (symbol "-#+"))
 
 ; Graph-thread-insert does the work of the traversal for the -#> macro.
 (defmulti graph-thread-insert
@@ -42,8 +40,6 @@
                    `(do ~@rest-form-stop)
                    (= (resolve function) (ns-resolve *ns* skip-threading-symb))
                    `(do ~@rest-form-skip)
-                   (= (resolve function) (ns-resolve *ns* ensure-threading-symb))
-                   `(~@(first rest-form) ~symb ~@(rest rest-form))
                    :else
                    (if-let [pos-fn (::thread-position-fn (meta (resolve function)))]
                            (cons function
@@ -111,3 +107,7 @@
   "Takes a list of functions, and declares them all as graph functions with the graph as the first argument."
   [& functions]
   `(do ~@(map (fn [f] (list `declare-graph-fn f `(constantly 0))) functions)))
+
+; Register two regular threading macros as graph functions, so that they can be used to ensure threading and do regular threading, in the graph context.
+(alter-meta! (resolve '->)  #(conj % {::thread-position-fn (constantly 0)}))
+(alter-meta! (resolve '->>) #(conj % {::thread-position-fn (constantly 0)}))
