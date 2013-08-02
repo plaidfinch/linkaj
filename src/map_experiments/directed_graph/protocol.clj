@@ -54,7 +54,7 @@
     "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."))
 
 ; All of the functions listed below are functions with a graph as their first argument; as such, they participate in the -#> macro and are auto-threaded.
-(declare-graph-fns-0
+(declare-graph-fns
   relations related-in? relation-in? add-relation remove-relation
   add-constraint reset-constraints verify-constraints constraints
   nodes* node-in? add-node* remove-node assoc-node* dissoc-node*
