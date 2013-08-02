@@ -108,3 +108,6 @@
 ; Register two regular threading macros as graph functions, so that they can be used to ensure threading and do regular threading, in the graph context.
 (declare-graph-fn ->  (constantly 0))
 (declare-graph-fn ->> (constantly 0))
+
+; Not sure if this is necessary, but it doesn't hurt...
+(declare-graph-fn -#> (constantly 0))
