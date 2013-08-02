@@ -25,7 +25,7 @@ More documentation about directed graphs is forthcoming, but here are some sampl
 (-#> (digraph :relations [[:from :to]])
      (add-nodes :id ['A 'B 'C 'D] :color :red)
      (add-cycle [:from :to]
-                (-#- (sort-by :id (nodes)))
+                (sort-by :id (nodes))
                 :foo true :bar 500)
      (nodes-away 2 :from (node :id 'A)))
 
