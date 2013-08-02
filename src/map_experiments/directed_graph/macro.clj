@@ -2,12 +2,19 @@
 
 ; Special threading macro to allow automatic context for queries and threading through multiple operations to boot.
 
+(defn insert-at
+  "Inserts something between the nth and n+1th elements of a seq."
+  [n x coll]
+  (concat (take n coll) [x] (drop n coll)))
+
 ; Quasi-macros used for changing threading inside the -#> form:
 (declare -#| -#-)
 (def stop-threading-symb
   (symbol "-#|"))
 (def skip-threading-symb
   (symbol "-#-"))
+(def ensure-threading-symb
+  (symbol "-#+"))
 
 ; Graph-thread-insert does the work of the traversal for the -#> macro.
 (defmulti graph-thread-insert
@@ -27,11 +34,15 @@
                    `(do ~@rest-form-stop)
                    (= (resolve function) (ns-resolve *ns* skip-threading-symb))
                    `(do ~@rest-form-skip)
+                   (= (resolve function) (ns-resolve *ns* ensure-threading-symb))
+                   `(~@(first rest-form) ~symb ~@(rest rest-form))
                    :else
-                   (cons (first form)
-                         (cons symb
-                               (map #(graph-thread-insert % symb)
-                                    (rest form)))))
+                   (if-let [pos-fn (::thread-position-fn (meta (resolve function)))]
+                           (cons function
+                                 (insert-at (pos-fn (count rest-form-stop))
+                                            symb
+                                            rest-form))
+                           (cons function rest-form)))
              (cons (graph-thread-insert function symb) rest-form)))
     (meta form)))
 
@@ -67,3 +78,25 @@
                   ~(graph-thread-insert form let-symb)))
        (list form x)))
   ([x form & more] `(-#> (-#> ~x ~form) ~@more)))
+
+(defmacro defgraphfn
+  "Defines a new graph function by automatically noting that the graph is the first argument. For more complex insertion behavior, use declare-graph-fn."
+  [name & decls]
+  (list* `defn
+         (with-meta name (assoc (meta name) ::thread-position-fn (constantly 0)))
+         decls))
+
+(defmacro declare-graph-fn
+  "Explicitly designates a function as graph-thread (-#>) capable. This is for use when either a) the function takes the graph as input in an argument other than its first (rendering defgraphfn inadequate) or b) the function was defined in a place outside the programmer's control, but the programmer wishes the -#> macro to thread a graph into this function.
+  
+  Takes a name to affect, and a function from the number of arguments the graph function is called with (sans graph) to the position at which to insert the graph in the function call.
+  
+  Note that this must be called after a function is defined via def or defn, as it has to be able to alter the metadata on the function, and declaring, setting metadata, and then defining wipes the metadata that was set before the definition."
+  [name function]
+  ;`(declare ~function)
+  `(alter-meta! (resolve '~name) #(conj % {::thread-position-fn ~function})))
+
+(defmacro declare-graph-fns
+  "Takes a list of functions, and declares them all as graph functions with the graph as the first argument."
+  [& functions]
+  `(do ~@(map (fn [f] (list `declare-graph-fn f `(constantly 0))) functions)))

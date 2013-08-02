@@ -374,6 +374,7 @@
                       (reduce constraints-fn
                               this
                               (concat (nodes this) (edges this))))
+  (constraints [this] constraints-fn)
   
   IPersistentCollection
   (equiv [this o] 
@@ -573,30 +574,30 @@
 
 ; Variadic map-destructing methods for protocol methods which take maps. This means that the syntax for queries can be *much* more succinct. Note that every method here simply destructures its rest arguments as a map and uses the corresponding asterisk method from the protocol.
 
-(defn nodes 
+(defgraphfn nodes 
   "Returns all graph nodes matching the query."
   ([graph & {:as query}]
    (nodes* graph query)))
-(defn add-node
+(defgraphfn add-node
   "Adds a node with attributes to the graph."
   ([graph & {:as attributes}] (add-node* graph attributes)))
-(defn assoc-node
+(defgraphfn assoc-node
   "Associates node n with attributes."
   ([graph n & {:as attributes}] (assoc-node* graph n attributes)))
-(defn dissoc-node
+(defgraphfn dissoc-node
   "Dissociates node n from attribute-keys."
   ([graph n & attribute-ks] (dissoc-node* graph n attribute-ks)))
 
-(defn edges
+(defgraphfn edges
   "Returns all graph edges matching the query."
   ([graph & {:as query}] (edges* graph query)))
-(defn add-edge
+(defgraphfn add-edge
   "Adds an edge with attributes to the graph. Attributes must contain exactly two relations, and they must be each others' opposites."
   ([graph & {:as attributes}] (add-edge* graph attributes)))
-(defn assoc-edge
+(defgraphfn assoc-edge
   "Associates edge-key with attributes. This can change relations."
   ([graph n & {:as attributes}] (assoc-edge* graph n attributes)))
-(defn dissoc-edge
+(defgraphfn dissoc-edge
   "Dissociates edge-key from attribute-keys. Relations cannot be dissociated."
   ([graph n & attribute-ks] (dissoc-edge* graph n attribute-ks)))
 
@@ -626,64 +627,66 @@
   "Gets a singular relation from things with only one relation."
   (specific relations))
 
+(declare-graph-fns node edge relation) ; We can't inline the fact that these are graph functions, cause we're not using defn, so we declare them explicitly as such rather than using the defgraphfn macro.
+
 ; Plural operators for nodes:
 
-(defn add-nodes
+(defgraphfn add-nodes
   "Adds all possible nodes matching attributes (format like query) to the graph."
   ([graph & {:as attributes}]
    (reduce add-node* graph (map-cross attributes))))
 
-(defn remove-nodes
+(defgraphfn remove-nodes
   "Removes all nodes in xs from the graph."
   ([graph xs]
    (reduce remove-node graph xs)))
 
-(defn assoc-nodes
+(defgraphfn assoc-nodes
   "Associates all nodes in xs with the attributes."
   ([graph xs & {:as attributes}]
    (reduce #(assoc-node* %1 %2 attributes)) graph xs))
 
-(defn dissoc-nodes
+(defgraphfn dissoc-nodes
   "Dissociates all nodes in xs from the attribute-keys."
   ([graph xs & attribute-keys]
    (reduce #(dissoc-node* %1 %2 attribute-keys)) graph xs))
 
 ; Plural operators for edges:
 
-(defn add-edges
+(defgraphfn add-edges
   "Adds all possible edges matching attributes (format like query) to the graph."
   ([graph & {:as attributes}]
    (reduce add-edge* graph (map-cross attributes))))
 
-(defn remove-edges
+(defgraphfn remove-edges
   "Removes all edges in edge-keys from the graph."
   ([graph es]
    (reduce remove-edge graph es)))
 
-(defn assoc-edges
+(defgraphfn assoc-edges
   "Associates all edges in edge-keys with the attributes."
   ([graph es & {:as attributes}]
    (reduce #(assoc-edge* %1 %2 attributes)) graph es))
 
-(defn dissoc-edges
+(defgraphfn dissoc-edges
   "Dissociates all edges in edge-keys from the attribute-keys."
   ([graph es & attribute-keys]
    (reduce #(dissoc-edge* %1 %2 attribute-keys)) graph es))
 
 ; Other useful operators:
 
-(defn edges-touching
+(defgraphfn edges-touching
   "Finds all edges which are connected by any relation to a particular node."
   ([graph n]
    (mapcat #(-#> graph (edges % n))
            (apply concat (relations graph)))))
 
-(defn assoc-all
+(defgraphfn assoc-all
   "Associates every item (edge or node) with the attributes."
   ([graph ks & {:as attributes}]
    (reduce #(assoc %1 %2 attributes)) graph ks))
 
-(defn add-path
+(defgraphfn add-path
   "Adds edges between each adjacent node given, along the relation given."
   ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
@@ -692,7 +695,7 @@
            graph
            (partition 2 1 xs))))
 
-(defn add-cycle
+(defgraphfn add-cycle
   "Adds edges between each adjacent node given, along the relation given, and loops back to the first node given."
   ([graph rels xs & {:as attributes}]
    {:pre (= 2 (count rels))}
@@ -702,7 +705,7 @@
                 graph
                 (partition 2 1 (concat xs [(first xs)]))))))
 
-(defn nodes-away
+(defgraphfn nodes-away
   "Finds all nodes which are n edges away from the given set of nodes along the relation given."
   ([graph distance rel xs]
    (let [xs (if (sequential? xs) xs [xs])]
