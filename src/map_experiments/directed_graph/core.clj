@@ -52,23 +52,24 @@
           (if (not (seq query))
               (nodes* this)
               (let [nodes-lists
-                    (for [[a vs] query]
+                    (for [[as vs] query
+                          a (sequentialize as)]
                          (apply union
-                                (if (relation-in? this a)
-                                    (for [v (sequentialize vs)]
-                                         (cond (nil? v) nil
-                                               (node? v)
-                                               (map #(attr-get edges-map %
-                                                               (opposite relations-map a))
-                                                    (keys-with edges-map a (id v)))
-                                               (edge? v)
-                                               [(attr-get edges-map (id v)
-                                                          (opposite relations-map a))]
-                                               :else
-                                               (throw (IllegalArgumentException.
-                                                        "Nodes can only be related to nodes, and by extension, to edges."))))
-                                    (for [v (sequentialize vs)]
-                                         (keys-with nodes-map a v)))))]
+                           (if (relation-in? this a)
+                               (for [v (sequentialize vs)]
+                                    (cond (nil? v) nil
+                                          (node? v)
+                                          (map #(attr-get edges-map %
+                                                          (opposite relations-map a))
+                                               (keys-with edges-map a (id v)))
+                                          (edge? v)
+                                          [(attr-get edges-map (id v)
+                                                     (opposite relations-map a))]
+                                          :else
+                                          (throw (IllegalArgumentException.
+                                                 "Nodes can only be related to nodes, and by extension, to edges."))))
+                               (for [v (sequentialize vs)]
+                                    (keys-with nodes-map a v)))))]
                    (map (partial graph-node this)
                         (if (< 1 (count nodes-lists))
                             (seq (apply intersection (map setify nodes-lists)))
