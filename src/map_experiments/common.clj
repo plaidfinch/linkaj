@@ -53,14 +53,12 @@
 
 (defn map-cross
   "Takes a map where keys are sequences are returns a sequence of maps where keys are every possible pick of a key for each value (cartesian product analogue for maps of sequences). If any key is not a sequence, it is treated as if it is a sequence of one item."
-  ([m] (when-let [[ks vs] (seq (first m))]
-                 (if-let [rest-maps (map-cross (dissoc m ks))]
-                         (for [k (sequentialize ks)
-                               v (sequentialize vs)
+  ([m] (when-let [[k vs] (seq (first m))]
+                 (if-let [rest-maps (map-cross (dissoc m k))]
+                         (for [v (sequentialize vs)
                                r rest-maps]
                               (assoc r k v))
-                         (for [k (sequentialize ks)
-                               v (sequentialize vs)]
+                         (for [v (sequentialize vs)]
                               {k v})))))
 
 (defn specific

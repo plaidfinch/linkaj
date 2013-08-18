@@ -52,8 +52,7 @@
           (if (not (seq query))
               (nodes* this)
               (let [nodes-lists
-                    (for [[as vs] query
-                          a (sequentialize as)]
+                    (for [[a vs] query]
                          (apply union
                            (if (relation-in? this a)
                                (for [v (sequentialize vs)]
