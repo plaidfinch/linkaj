@@ -178,18 +178,18 @@
               (let [edges-lists
                     (for [[a vs] query]
                          (apply union
-                                (if (relation-in? this a)
-                                    (for [v (sequentialize vs)]
-                                         (cond (nil? v) nil
-                                               (node? v)
-                                               (keys-with edges-map a (id v))
-                                               (edge? v)
-                                               (keys-with
-                                                 edges-map a
-                                                 (attr-get edges-map (id v)
-                                                           (opposite relations-map a)))
-                                               :else
-                                               (throw (IllegalArgumentException.
+                           (if (relation-in? this a)
+                               (for [v (sequentialize vs)]
+                                     (cond (nil? v) nil
+                                           (node? v)
+                                           (keys-with edges-map a (id v))
+                                           (edge? v)
+                                           (keys-with
+                                             edges-map a
+                                             (attr-get edges-map (id v)
+                                                       (opposite relations-map a)))
+                                           :else
+                                           (throw (IllegalArgumentException.
                                                         "Edges can only be related to nodes, and by extension, to edges."))))
                                     (for [v (sequentialize vs)]
                                          (keys-with edges-map a v)))))]
