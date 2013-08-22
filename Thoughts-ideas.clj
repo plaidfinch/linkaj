@@ -13,6 +13,10 @@ Future work:
 
 (defn now [] (java.util.Date.))
 
+(defn with
+  ([f] (fn [x] (if (f x) true false)))
+  ([f p & args] (fn [x] (apply p (f x) args))))
+
 (def family-tree
 (-#> (digraph :relations [[:parent :child] [:wife :husband]]
               :constraints
