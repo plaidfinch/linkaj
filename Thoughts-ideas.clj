@@ -3,7 +3,7 @@ Future work:
    + Split constraints into a constraint predicate (i.e. "when creating a node") and a constraint action (i.e. "add the current time")
    + Each of these should be very parameterized and H-O
      * (on (add-node) (assoc-this-node :created now))
-     * (on (remove-node (with-attr :name :root)) revert)
+     * (on (remove-node (with :name = :root)) revert)
    + Need to define qualified new versions of common logical combinators, such as and, or, not, which are of type constraint -> constraint (-> constraint ...)
    + Factor out constraint composition into separate function, use it in graph for add-constraint
    + Library should be designed to be imported qualified, i.e. constraint/comp
@@ -13,9 +13,33 @@ Future work:
 
 (defn now [] (java.util.Date.))
 
+; succinct expression of predicate applied to a transformation
 (defn with
-  ([f] (fn [x] (if (f x) true false)))
+  ([f p] (comp p f))
   ([f p & args] (fn [x] (apply p (f x) args))))
+
+; backwards composition
+(defn |
+  ([] identity)
+  ([f1] f1)
+  ([f1 f2] (comp f2 f1))
+  ([f1 f2 & fs] (apply comp (reverse (cons f1 (cons f2 fs))))))
+
+(defn &
+  ([f] (partial reduce f))
+  ([f s] (partial reduce f s)))
+
+; functional thrush
+(defn |>
+  ([x] x)
+  ([x f] (f x))
+  ([x f & fs] ((apply | (cons f fs)) x)))
+
+; better name for this...?
+(defn all
+  ([f1] f1)
+  ([f1 f2] (fn [x] (and (f1 x) (f2 x))))
+  ([f1 f2 & fs] (fn [x] (every? true ((apply juxt (cons f1 (cons f2 fs))) x)))))
 
 (def family-tree
 (-#> (digraph :relations [[:parent :child] [:wife :husband]]
