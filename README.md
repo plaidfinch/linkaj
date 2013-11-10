@@ -48,5 +48,5 @@ More documentation about directed graphs is forthcoming, but here are some sampl
 ## License
 
 Copyright © 2013 Kenneth Foner.
-Licensing information to be determined.
+Licensed under The MIT License (MIT)
 
